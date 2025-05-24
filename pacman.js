@@ -1,0 +1,272 @@
+   // Pac-Man Background
+const canvas = document.getElementById('retro-bg');
+const ctx = canvas.getContext('2d');
+
+let width = canvas.width = window.innerWidth;
+let height = canvas.height = window.innerHeight;
+
+const tileSize = 40;
+const cols = Math.floor(width / tileSize);
+const rows = Math.floor(height / tileSize);
+
+
+const mazeColors = [
+  '#fb234e15', // Red
+  '#f8862215', // Orange
+  '#f0ed2115', // Yellow
+  '#47ef2115', // Green
+  '#23d6e315', // Cyan
+  '#2326e015', // Blue
+  '#a221dd15', // Mageta
+];
+
+
+const mazeColor = mazeColors[Math.floor(Math.random() * mazeColors.length)];
+
+let maze = [];
+
+function generateMaze() {
+  maze = [];
+  for (let y = 0; y < rows; y++) {
+    maze[y] = [];
+    for (let x = 0; x < cols; x++) {
+      if (x === 0 || y === 0 || x === cols - 1 || y === rows - 1) {
+        maze[y][x] = 1;
+      } else {
+        if (x % 5 === 0) {
+          maze[y][x] = Math.random() < 0.8 ? 1 : 0;
+        } else if (y % 4 === 0) {
+          maze[y][x] = Math.random() < 0.6 ? 1 : 0;
+        } else {
+          maze[y][x] = 0;
+        }
+      }
+    }
+  }
+}
+
+generateMaze();
+
+const mouse = { x: Math.floor(cols / 2), y: Math.floor(rows / 2) };
+
+document.addEventListener('mousemove', e => {
+  mouse.x = Math.min(cols - 1, Math.max(0, Math.floor(e.clientX / tileSize)));
+  mouse.y = Math.min(rows - 1, Math.max(0, Math.floor(e.clientY / tileSize)));
+});
+
+class Particle {
+  constructor() {
+    this.reset();
+  }
+  reset() {
+    this.x = Math.random() * width;
+    this.y = Math.random() * height;
+    this.size = Math.random() * 2 + 1;
+    this.baseX = this.x;
+    this.baseY = this.y;
+    const colors = ['#3d3558', '#2e2a49', '#4a4367'];
+    this.color = colors[Math.floor(Math.random() * colors.length)];
+  }
+  draw() {
+    ctx.beginPath();
+    ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+    ctx.fillStyle = this.color;
+    ctx.shadowColor = this.color;
+    ctx.shadowBlur = 5;
+    ctx.fill();
+  }
+  update() {
+    const dx = this.x - mouse.x * tileSize;
+    const dy = this.y - mouse.y * tileSize;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+    const maxDist = 120;
+    const force = (maxDist - dist) / maxDist;
+
+    if (dist < maxDist) {
+      this.x += dx / dist * force * 1.2;
+      this.y += dy / dist * force * 1.2;
+    } else {
+      this.x += (this.baseX - this.x) * 0.02;
+      this.y += (this.baseY - this.y) * 0.02;
+    }
+  }
+}
+
+let particles = [];
+for (let i = 0; i < 100; i++) {
+  particles.push(new Particle());
+}
+
+const pacman = {
+  x: 1,
+  y: 1,
+  px: 1,
+  py: 1,
+  angle: 0,
+  direction: 'right',
+  path: [],
+  speed: 0.07,
+  moving: false,
+  target: null
+};
+
+function heuristic(a, b) {
+  return Math.abs(a.x - b.x) + Math.abs(a.y - b.y);
+}
+
+function findPath(start, end) {
+  const openSet = [start];
+  const cameFrom = {};
+  const gScore = {};
+  const fScore = {};
+
+  function nodeKey(n) {
+    return `${n.x},${n.y}`;
+  }
+
+  gScore[nodeKey(start)] = 0;
+  fScore[nodeKey(start)] = heuristic(start, end);
+
+  while (openSet.length > 0) {
+    openSet.sort((a, b) => fScore[nodeKey(a)] - fScore[nodeKey(b)]);
+    const current = openSet.shift();
+    if (current.x === end.x && current.y === end.y) {
+      const path = [];
+      let temp = nodeKey(current);
+      while (temp in cameFrom) {
+        path.unshift(cameFrom[temp]);
+        temp = nodeKey(cameFrom[temp]);
+      }
+      return path;
+    }
+
+    const neighbors = [
+      { x: current.x + 1, y: current.y },
+      { x: current.x - 1, y: current.y },
+      { x: current.x, y: current.y + 1 },
+      { x: current.x, y: current.y - 1 }
+    ];
+
+    for (const neighbor of neighbors) {
+      if (
+        neighbor.x < 0 || neighbor.x >= cols ||
+        neighbor.y < 0 || neighbor.y >= rows ||
+        maze[neighbor.y][neighbor.x] === 1
+      ) continue;
+
+      const tentativeG = gScore[nodeKey(current)] + 1;
+      const key = nodeKey(neighbor);
+      if (!(key in gScore) || tentativeG < gScore[key]) {
+        cameFrom[key] = current;
+        gScore[key] = tentativeG;
+        fScore[key] = tentativeG + heuristic(neighbor, end);
+        if (!openSet.find(n => n.x === neighbor.x && n.y === neighbor.y)) {
+          openSet.push(neighbor);
+        }
+      }
+    }
+  }
+  return [];
+}
+
+function updatePacman() {
+  if (!pacman.moving) {
+    const target = { x: mouse.x, y: mouse.y };
+    if (pacman.path.length === 0 || Math.random() < 0.02) {
+      pacman.path = findPath({ x: Math.round(pacman.px), y: Math.round(pacman.py) }, target);
+    }
+    if (pacman.path.length > 0) {
+      pacman.target = pacman.path.shift();
+      pacman.moving = true;
+
+      if (pacman.target.x > pacman.px) pacman.direction = 'right';
+      else if (pacman.target.x < pacman.px) pacman.direction = 'left';
+      else if (pacman.target.y > pacman.py) pacman.direction = 'down';
+      else if (pacman.target.y < pacman.py) pacman.direction = 'up';
+    }
+  }
+
+  if (pacman.moving && pacman.target) {
+    const dx = pacman.target.x - pacman.px;
+    const dy = pacman.target.y - pacman.py;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+
+    if (dist < pacman.speed) {
+      pacman.px = pacman.target.x;
+      pacman.py = pacman.target.y;
+      pacman.moving = false;
+      pacman.x = pacman.target.x;
+      pacman.y = pacman.target.y;
+      pacman.target = null;
+    } else {
+      pacman.px += (dx / dist) * pacman.speed;
+      pacman.py += (dy / dist) * pacman.speed;
+    }
+  }
+
+  pacman.angle += 0.2;
+}
+
+function drawMaze() {
+  for (let y = 0; y < rows; y++) {
+    for (let x = 0; x < cols; x++) {
+      if (maze[y][x] === 1) {
+        ctx.fillStyle = mazeColor;
+        ctx.fillRect(x * tileSize, y * tileSize, tileSize, tileSize);
+        ctx.strokeStyle = mazeColor;
+        ctx.lineWidth = 1;
+        ctx.strokeRect(x * tileSize, y * tileSize, tileSize, tileSize);
+      }
+    }
+  }
+}
+
+function drawPacman() {
+  const cx = pacman.px * tileSize + tileSize / 2;
+  const cy = pacman.py * tileSize + tileSize / 2;
+  const r = tileSize / 2 - 4;
+
+  const mouth = Math.abs(Math.sin(pacman.angle)) * Math.PI / 5;
+
+  let rotation = 0;
+  if (pacman.direction === 'right') rotation = 0;
+  else if (pacman.direction === 'left') rotation = Math.PI;
+  else if (pacman.direction === 'up') rotation = -Math.PI / 2;
+  else if (pacman.direction === 'down') rotation = Math.PI / 2;
+
+  ctx.save();
+  ctx.translate(cx, cy);
+  ctx.rotate(rotation);
+  ctx.beginPath();
+  ctx.moveTo(0, 0);
+  ctx.arc(0, 0, r, mouth, 2 * Math.PI - mouth);
+  ctx.lineTo(0, 0);
+  ctx.fillStyle = '#d4c05a';
+  ctx.shadowColor = '#d4c05a';
+  ctx.shadowBlur = 8;
+  ctx.fill();
+  ctx.restore();
+}
+
+function animate() {
+  ctx.clearRect(0, 0, width, height);
+
+  drawMaze();
+  updatePacman();
+  drawPacman();
+
+  for (const p of particles) {
+    p.update();
+    p.draw();
+  }
+
+  requestAnimationFrame(animate);
+}
+
+animate();
+
+window.addEventListener('resize', () => {
+  width = canvas.width = window.innerWidth;
+  height = canvas.height = window.innerHeight;
+});
+
