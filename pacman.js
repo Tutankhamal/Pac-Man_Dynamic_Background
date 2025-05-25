@@ -20,8 +20,6 @@ let mazeColor = baseMazeColor;
 let rgbMode = false;
 let rgbHue = 0;
 
-let fruit = null;
-
 function shuffle(array) {
   for (let i = array.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
@@ -59,22 +57,26 @@ function generateClassicMaze() {
 
   carveMaze(1, 1);
 
-  // Espelha para criar o labirinto completo
+  // Espelha e cria o labirinto completo
   maze = Array.from({ length: rows }, (_, y) => {
     const mirroredRow = [...leftMaze[y]];
     const middleCol = Math.floor(cols / 2);
 
-    // Se número de colunas for ímpar, adiciona uma coluna central
+    // Se cols é ímpar, adiciona coluna central
     let row = (cols % 2 === 0)
       ? mirroredRow.concat([...mirroredRow].reverse())
       : mirroredRow.concat([1], [...mirroredRow].reverse());
 
-    // Garante passagens centrais (túnel)
+    // Abre caminho no túnel central em 3 linhas centrais,
+    // abrindo 2 blocos para a esquerda e 2 para a direita do centro
     const tunnelRows = [Math.floor(rows / 2) - 1, Math.floor(rows / 2), Math.floor(rows / 2) + 1];
     if (tunnelRows.includes(y)) {
-      row[middleCol] = 0;
+      for (let offset = -2; offset <= 2; offset++) {
+        if (middleCol + offset >= 0 && middleCol + offset < cols) {
+          row[middleCol + offset] = 0;
+        }
+      }
     }
-
     return row;
   });
 
@@ -83,7 +85,7 @@ function generateClassicMaze() {
   maze[1][2] = 0;
   maze[2][1] = 0;
 
-  // Adiciona aberturas extras depois do espelhamento
+  // Adiciona aberturas extras para melhorar caminhos
   addExtraOpenings(0.08);
 }
 
@@ -148,7 +150,7 @@ for (let i = 0; i < 100; i++) particles.push(new Particle());
 
 const pacman = {
   x: 1, y: 1, px: 1, py: 1,
-  angle: 0, direction: 'right',
+  direction: 'right',
   path: [], speed: 0.07,
   moving: false, target: null
 };
@@ -208,6 +210,7 @@ function findPath(start, end) {
   return [];
 }
 
+let fruit = null;
 function placeFruit() {
   while (true) {
     const fx = Math.floor(Math.random() * cols);
@@ -283,7 +286,6 @@ function updatePacman() {
       pacman.y = pacman.target.y;
       pacman.target = null;
 
-      // Checa fruta
       if (fruit && pacman.x === fruit.x && pacman.y === fruit.y) {
         fruit = null;
         rgbMode = true;
@@ -300,50 +302,63 @@ function updatePacman() {
 function drawPacman() {
   const centerX = pacman.px * tileSize + tileSize / 2;
   const centerY = pacman.py * tileSize + tileSize / 2;
-  const radius = tileSize / 2.1;
-  let startAngle = 0.25 * Math.PI;
-  let endAngle = 1.75 * Math.PI;
-
-  switch (pacman.direction) {
-    case 'right': startAngle = 0.25 * Math.PI; endAngle = 1.75 * Math.PI; break;
-    case 'left': startAngle = 1.25 * Math.PI; endAngle = 0.75 * Math.PI; break;
-    case 'up': startAngle = 1.75 * Math.PI; endAngle = 1.25 * Math.PI; break;
-    case 'down': startAngle = 0.75 * Math.PI; endAngle = 0.25 * Math.PI; break;
-  }
-
-  // Boca animada
-  const time = Date.now() / 200;
-  const mouthOpen = Math.abs(Math.sin(time)) * 0.25 + 0.15;
-  const openAngle = mouthOpen * Math.PI;
+  const radius = tileSize / 2.5;
 
   ctx.fillStyle = '#FCE303';
-  ctx.strokeStyle = '#000000';
-  ctx.lineWidth = 3;
   ctx.shadowColor = 'yellow';
   ctx.shadowBlur = 15;
 
   ctx.beginPath();
+  let mouthAngle = Math.abs(Math.sin(Date.now() / 150)) * 0.3 + 0.1;
+
+  // Define ângulo de boca dependendo da direção
+  let startAngle, endAngle;
+  switch (pacman.direction) {
+    case 'right':
+      startAngle = mouthAngle;
+      endAngle = 2 * Math.PI - mouthAngle;
+      break;
+    case 'left':
+      startAngle = Math.PI + mouthAngle;
+      endAngle = Math.PI * 2 - mouthAngle;
+      break;
+    case 'up':
+      startAngle = 1.5 * Math.PI + mouthAngle;
+      endAngle = 0.5 * Math.PI - mouthAngle;
+      break;
+    case 'down':
+      startAngle = 0.5 * Math.PI + mouthAngle;
+      endAngle = 1.5 * Math.PI - mouthAngle;
+      break;
+    default:
+      startAngle = mouthAngle;
+      endAngle = 2 * Math.PI - mouthAngle;
+  }
+
   ctx.moveTo(centerX, centerY);
-  ctx.arc(centerX, centerY, radius, startAngle + openAngle, endAngle - openAngle);
+  ctx.arc(centerX, centerY, radius, startAngle, endAngle, false);
   ctx.closePath();
   ctx.fill();
-  ctx.stroke();
 
   // Olho
   ctx.beginPath();
   ctx.fillStyle = '#000';
-  let eyeX = centerX + Math.cos((startAngle + endAngle) / 2) * radius / 2;
-  let eyeY = centerY + Math.sin((startAngle + endAngle) / 2) * radius / 2 - 5;
-  ctx.arc(eyeX, eyeY, 4, 0, Math.PI * 2);
+  let eyeOffsetX = 0;
+  let eyeOffsetY = -radius / 3;
+  switch (pacman.direction) {
+    case 'right': eyeOffsetX = radius / 3; break;
+    case 'left': eyeOffsetX = -radius / 3; break;
+    case 'up': eyeOffsetX = 0; eyeOffsetY = -radius / 2; break;
+    case 'down': eyeOffsetX = 0; eyeOffsetY = 0; break;
+  }
+  ctx.arc(centerX + eyeOffsetX, centerY + eyeOffsetY, radius / 6, 0, 2 * Math.PI);
   ctx.fill();
 }
 
 function hslToHexWithAlpha(hsl, alphaHex) {
-  // Recebe hsl string tipo "hsl(120, 100%, 50%)"
   const ctxTemp = document.createElement('canvas').getContext('2d');
   ctxTemp.fillStyle = hsl;
   const rgb = ctxTemp.fillStyle;
-  // rgb fica tipo 'rgb(r, g, b)'
   const rgbValues = rgb.match(/\d+/g);
   const r = parseInt(rgbValues[0]).toString(16).padStart(2, '0');
   const g = parseInt(rgbValues[1]).toString(16).padStart(2, '0');
@@ -361,7 +376,6 @@ function loop() {
 
   drawMaze();
   drawFruit();
-
   updatePacman();
   drawPacman();
 
@@ -375,4 +389,3 @@ window.addEventListener('resize', () => {
   width = canvas.width = window.innerWidth;
   height = canvas.height = window.innerHeight;
 });
-
