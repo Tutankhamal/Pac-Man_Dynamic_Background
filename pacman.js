@@ -1,3 +1,9 @@
+const canvas = document.getElementById('retro-bg');
+const ctx = canvas.getContext('2d');
+
+let width = canvas.width = window.innerWidth;
+let height = canvas.height = window.innerHeight;
+
 const tileSize = 40;
 const cols = Math.floor(width / tileSize);
 const rows = Math.floor(height / tileSize);
@@ -153,7 +159,7 @@ function findPath(start, end) {
   const cameFrom = {};
   const gScore = {};
   const fScore = {};
-  function nodeKey(n) { return ${n.x},${n.y}; }
+  function nodeKey(n) { return `${n.x},${n.y}`; }
   gScore[nodeKey(start)] = 0;
   fScore[nodeKey(start)] = heuristic(start, end);
 
@@ -223,7 +229,7 @@ function drawFruit() {
 function updateMazeColor() {
   if (rgbMode) {
     const opacityHex = baseMazeColor.slice(-2);
-    const rgb = hsl(${rgbHue}, 100%, 55%);
+    const rgb = `hsl(${rgbHue}, 100%, 55%)`;
     mazeColor = hslToHexWithAlpha(rgb, opacityHex);
     rgbHue = (rgbHue + 1) % 360;
   } else {
@@ -316,7 +322,7 @@ function hslToHexWithAlpha(hsl, alphaHex) {
   const rgb = window.getComputedStyle(temp).color;
   document.body.removeChild(temp);
   const [r, g, b] = rgb.match(/\d+/g).map(Number);
-  return #${[r, g, b].map(x => x.toString(16).padStart(2, '0')).join('')}${alphaHex};
+  return `#${[r, g, b].map(x => x.toString(16).padStart(2, '0')).join('')}${alphaHex}`;
 }
 
 function animate() {
