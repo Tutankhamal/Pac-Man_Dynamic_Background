@@ -1,4 +1,3 @@
-// Pac-Man Background com labirinto em estilo clássico
 const canvas = document.getElementById('retro-bg');
 const ctx = canvas.getContext('2d');
 
@@ -8,6 +7,7 @@ let height = canvas.height = window.innerHeight;
 const tileSize = 40;
 const cols = Math.floor(width / tileSize);
 const rows = Math.floor(height / tileSize);
+const halfCols = Math.floor(cols / 2);
 
 const mazeColors = [
   '#fb234e15', '#f8862215', '#f0ed2115',
@@ -31,16 +31,17 @@ function shuffle(array) {
 }
 
 function generateClassicMaze() {
-  maze = Array.from({ length: rows }, () => Array(cols).fill(1));
-  const visited = Array.from({ length: rows }, () => Array(cols).fill(false));
+  // Gera metade do labirinto
+  let leftMaze = Array.from({ length: rows }, () => Array(halfCols).fill(1));
+  const visited = Array.from({ length: rows }, () => Array(halfCols).fill(false));
 
   function isValid(x, y) {
-    return x > 0 && x < cols - 1 && y > 0 && y < rows - 1;
+    return x > 0 && x < halfCols - 1 && y > 0 && y < rows - 1;
   }
 
   function carveMaze(x, y) {
     visited[y][x] = true;
-    maze[y][x] = 0;
+    leftMaze[y][x] = 0;
 
     const directions = shuffle([
       [0, -2], [0, 2], [-2, 0], [2, 0]
@@ -51,7 +52,7 @@ function generateClassicMaze() {
       const ny = y + dy;
 
       if (isValid(nx, ny) && !visited[ny][nx]) {
-        maze[y + dy / 2][x + dx / 2] = 0;
+        leftMaze[y + dy / 2][x + dx / 2] = 0;
         carveMaze(nx, ny);
       }
     }
@@ -59,9 +60,20 @@ function generateClassicMaze() {
 
   carveMaze(1, 1);
 
-  // Adiciona buracos extras para maior variedade de caminhos
+  // Espelha horizontalmente
+  maze = Array.from({ length: rows }, (_, y) => {
+    const mirroredRow = [...leftMaze[y]];
+    const rightHalf = [...mirroredRow].reverse();
+    // Se número de colunas é ímpar, duplicamos a coluna do meio
+    return (cols % 2 === 0)
+      ? mirroredRow.concat(rightHalf)
+      : mirroredRow.concat([0], rightHalf);
+  });
+
+  // Buracos extras
   addExtraOpenings(0.08);
 
+  // Garante início livre
   maze[1][1] = 0;
   maze[1][2] = 0;
   maze[2][1] = 0;
