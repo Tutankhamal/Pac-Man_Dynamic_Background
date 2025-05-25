@@ -278,21 +278,32 @@ function updatePacman() {
     const dx = pacman.target.x - pacman.px;
     const dy = pacman.target.y - pacman.py;
     const dist = Math.sqrt(dx * dx + dy * dy);
-    if (dist < pacman.speed) {
-      pacman.px = pacman.target.x;
-      pacman.py = pacman.target.y;
-      pacman.moving = false;
-      pacman.x = pacman.target.x;
-      pacman.y = pacman.target.y;
-      pacman.target = null;
-      if (fruit && pacman.x === fruit.x && pacman.y === fruit.y) {
-        fruit = null;
-        rgbMode = true;
-      }
-    } else {
-      pacman.px += (dx / dist) * pacman.speed;
-      pacman.py += (dy / dist) * pacman.speed;
-    }
+if (dist < 0.01) {
+  pacman.px = pacman.target.x;
+  pacman.py = pacman.target.y;
+  pacman.x = pacman.target.x;
+  pacman.y = pacman.target.y;
+
+  if (fruit && pacman.x === fruit.x && pacman.y === fruit.y) {
+    fruit = null;
+    rgbMode = true;
+  }
+
+  if (pacman.path.length > 0) {
+    pacman.target = pacman.path.shift();
+    pacman.moving = true;
+    if (pacman.target.x > pacman.px) pacman.direction = 'right';
+    else if (pacman.target.x < pacman.px) pacman.direction = 'left';
+    else if (pacman.target.y > pacman.py) pacman.direction = 'down';
+    else if (pacman.target.y < pacman.py) pacman.direction = 'up';
+  } else {
+    pacman.moving = false;
+    pacman.target = null;
+  }
+} else {
+  pacman.px += (dx / dist) * pacman.speed;
+  pacman.py += (dy / dist) * pacman.speed;
+}
   }
   pacman.angle += 0.2;
 }
