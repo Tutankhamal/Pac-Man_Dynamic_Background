@@ -10,7 +10,7 @@ const cols = Math.floor(width / tileSize);
 const rows = Math.floor(height / tileSize);
 
 let maze = [];
-let mazeColor = '#47ef2115';
+let mazeColor = '#47ef21';
 let rgbMode = false;
 let rgbHue = 0;
 
