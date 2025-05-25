@@ -1,4 +1,4 @@
-// Pac-Man Background com labirinto em estilo clássico
+// Pac-Man Background com labirinto estilo clássico com caminhos largos e acessíveis
 const canvas = document.getElementById('retro-bg');
 const ctx = canvas.getContext('2d');
 
@@ -10,7 +10,7 @@ const cols = Math.floor(width / tileSize);
 const rows = Math.floor(height / tileSize);
 
 let maze = [];
-let mazeColor = '#47ef21';
+let mazeColor = '#47ef2115';
 let rgbMode = false;
 let rgbHue = 0;
 
@@ -23,32 +23,37 @@ function hasFreeSpaceNear(x, y) {
   return neighbors.some(([nx, ny]) => maze[ny] && maze[ny][nx] === 0);
 }
 
-function generateClassicMaze() {
+function generateWideMaze() {
   // Inicializa todas as células como parede
   maze = Array.from({ length: rows }, () => Array(cols).fill(1));
 
-  // Carve caminhos horizontais e verticais com padrões simples inspirados em Pac-Man
-  for (let y = 1; y < rows - 1; y += 2) {
-    for (let x = 1; x < cols - 1; x += 2) {
-      maze[y][x] = 0;
+  // Começa com uma célula inicial
+  const carve = (x, y) => {
+    const directions = [
+      [2, 0], [-2, 0], [0, 2], [0, -2]
+    ].sort(() => Math.random() - 0.5);
 
-      // Carve para direita ou para baixo
-      const dir = Math.random() < 0.5 ? 'horizontal' : 'vertical';
-      if (dir === 'horizontal' && x + 1 < cols - 1) {
-        maze[y][x + 1] = 0;
-      } else if (y + 1 < rows - 1) {
-        maze[y + 1][x] = 0;
+    for (const [dx, dy] of directions) {
+      const nx = x + dx;
+      const ny = y + dy;
+      if (nx > 1 && nx < cols - 2 && ny > 1 && ny < rows - 2 && maze[ny][nx] === 1) {
+        maze[ny][nx] = 0;
+        maze[y + dy / 2][x + dx / 2] = 0;
+        maze[y + dy / 2 + 1][x + dx / 2] = 0;
+        maze[ny + 1][nx] = 0;
+        carve(nx, ny);
       }
     }
   }
 
-  // Garante espaço inicial livre para o Pac-Man
   maze[1][1] = 0;
-  maze[1][2] = 0;
   maze[2][1] = 0;
+  maze[1][2] = 0;
+  maze[2][2] = 0;
+  carve(1, 1);
 }
 
-generateClassicMaze();
+generateWideMaze();
 
 const mouse = { x: Math.floor(cols / 2), y: Math.floor(rows / 2) };
 
@@ -158,13 +163,18 @@ function findPath(start, end) {
 }
 
 function placeFruit() {
-  while (true) {
+  let attempts = 0;
+  while (attempts < 100) {
     const fx = Math.floor(Math.random() * cols);
     const fy = Math.floor(Math.random() * rows);
     if (maze[fy][fx] === 0 && (fx !== pacman.x || fy !== pacman.y)) {
-      fruit = { x: fx, y: fy };
-      break;
+      const path = findPath({ x: pacman.x, y: pacman.y }, { x: fx, y: fy });
+      if (path.length > 0) {
+        fruit = { x: fx, y: fy };
+        return;
+      }
     }
+    attempts++;
   }
 }
 
@@ -180,7 +190,7 @@ function drawFruit() {
 
 function updateMazeColor() {
   if (rgbMode) {
-    mazeColor = `hsl(${rgbHue}, 100%, 55%)`;
+    mazeColor = `hsl(${rgbHue}, 100%, 55%)` + '15';
     rgbHue = (rgbHue + 1) % 360;
   }
 }
