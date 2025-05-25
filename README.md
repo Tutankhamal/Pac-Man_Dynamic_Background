@@ -1,5 +1,7 @@
 # Pac-Man Dynamic Background
 
+# [PREVIEW (CLICK HERE)](https://pac-man-dynamic-background.vercel.app/)
+
 ## Overview
 The **Pac-Man Dynamic Background** is a visually engaging and interactive animation that mimics classic arcade mechanics while responding dynamically to user input. It creates a **procedural maze**, generates floating particles, and features an autonomous Pac-Man that navigates towards the user's cursor using an intelligent pathfinding algorithm.
 
