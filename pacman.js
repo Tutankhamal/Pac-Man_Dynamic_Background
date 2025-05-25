@@ -24,15 +24,12 @@ function hasFreeSpaceNear(x, y) {
 }
 
 function generateClassicMaze() {
-  // Inicializa todas as células como parede
   maze = Array.from({ length: rows }, () => Array(cols).fill(1));
 
-  // Carve caminhos horizontais e verticais com padrões simples inspirados em Pac-Man
   for (let y = 1; y < rows - 1; y += 2) {
     for (let x = 1; x < cols - 1; x += 2) {
       maze[y][x] = 0;
 
-      // Carve para direita ou para baixo
       const dir = Math.random() < 0.5 ? 'horizontal' : 'vertical';
       if (dir === 'horizontal' && x + 1 < cols - 1) {
         maze[y][x + 1] = 0;
@@ -42,7 +39,6 @@ function generateClassicMaze() {
     }
   }
 
-  // Garante espaço inicial livre para o Pac-Man
   maze[1][1] = 0;
   maze[1][2] = 0;
   maze[2][1] = 0;
@@ -187,12 +183,23 @@ function updateMazeColor() {
 
 function drawMaze() {
   updateMazeColor();
+
+  let colorWithOpacity;
+
+  if (mazeColor.startsWith('hsl')) {
+    // Converte HSL para HSLA com opacidade de 0.03
+    colorWithOpacity = mazeColor.replace('hsl', 'hsla').replace(')', ', 0.03)');
+  } else {
+    // Converte cor estática (hex) para RGBA manualmente — fixo para '#47ef21'
+    colorWithOpacity = 'rgba(71, 239, 33, 0.03)';
+  }
+
   for (let y = 0; y < rows; y++) {
     for (let x = 0; x < cols; x++) {
       if (maze[y][x] === 1) {
-        ctx.fillStyle = mazeColor;
+        ctx.fillStyle = colorWithOpacity;
         ctx.fillRect(x * tileSize, y * tileSize, tileSize, tileSize);
-        ctx.strokeStyle = mazeColor;
+        ctx.strokeStyle = colorWithOpacity;
         ctx.lineWidth = 1;
         ctx.strokeRect(x * tileSize, y * tileSize, tileSize, tileSize);
       }
