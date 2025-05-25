@@ -1,4 +1,3 @@
-// Pac-Man Background com labirinto em estilo clássico aprimorado
 const canvas = document.getElementById('retro-bg');
 const ctx = canvas.getContext('2d');
 
@@ -24,34 +23,86 @@ function generateClassicMaze() {
   // Inicializa tudo com parede (1)
   maze = Array.from({ length: rows }, () => Array(cols).fill(1));
 
-  // Cria corredores largos de largura 2 (2 células livres lado a lado)
-  for (let y = 1; y < rows - 1; y++) {
-    for (let x = 1; x < Math.floor(cols / 2) - 1; x++) {
-      if (y % 2 === 1 && x % 2 === 1) {
-        maze[y][x] = 0;
-        maze[y][x + 1] = 0; // corredor largo horizontal
-      }
-    }
-  }
+  // Usamos metade do labirinto (lado esquerdo)
+  const halfCols = Math.floor(cols / 2);
 
-  // Cria corredores verticais largos em intervalos para interligar caminhos
-  for (let x = 1; x < Math.floor(cols / 2) - 1; x += 4) {
-    for (let y = 1; y < rows - 1; y++) {
-      if (y % 2 === 1) {
-        maze[y][x] = 0;
-        maze[y][x + 1] = 0;
-      }
-    }
-  }
+  // Cria uma "grade de células" para o labirinto perfeito com células maiores
+  // Cada célula será 2x2 blocos de corredor no labirinto final
+  const cellRows = Math.floor((rows - 1) / 2);
+  const cellCols = Math.floor((halfCols - 1) / 2);
 
-  // Espelha lado esquerdo para lado direito (simetria horizontal)
+  // Gera grade de células cheias de paredes (true = visitada, false = não)
+  let visited = Array.from({ length: cellRows }, () => Array(cellCols).fill(false));
+  
+  // Marca labirinto "base" com paredes
   for (let y = 0; y < rows; y++) {
-    for (let x = 0; x < Math.floor(cols / 2); x++) {
+    for (let x = 0; x < halfCols; x++) {
+      maze[y][x] = 1;
+    }
+  }
+
+  function carvePassages(cx, cy) {
+    visited[cy][cx] = true;
+
+    // Ordem aleatória das direções para evitar padrão repetido
+    const directions = [
+      { dx: 1, dy: 0 },
+      { dx: -1, dy: 0 },
+      { dx: 0, dy: 1 },
+      { dx: 0, dy: -1 },
+    ].sort(() => Math.random() - 0.5);
+
+    for (const {dx, dy} of directions) {
+      const nx = cx + dx;
+      const ny = cy + dy;
+      if (nx >= 0 && nx < cellCols && ny >= 0 && ny < cellRows && !visited[ny][nx]) {
+        // Remove paredes entre células na matriz maze, criando corredores largos (2x2 blocos livres)
+        const x1 = 1 + cx * 2;
+        const y1 = 1 + cy * 2;
+        const x2 = 1 + nx * 2;
+        const y2 = 1 + ny * 2;
+
+        // Marca as duas células como corredores
+        maze[y1][x1] = 0;
+        maze[y1][x1 + 1] = 0;
+        maze[y1 + 1][x1] = 0;
+        maze[y1 + 1][x1 + 1] = 0;
+
+        maze[y2][x2] = 0;
+        maze[y2][x2 + 1] = 0;
+        maze[y2 + 1][x2] = 0;
+        maze[y2 + 1][x2 + 1] = 0;
+
+        // Remove a parede entre as células (corredor largo)
+        const wx = (x1 + x2) / 2;
+        const wy = (y1 + y2) / 2;
+        maze[wy][wx] = 0;
+        maze[wy][wx + 1] = 0;
+        maze[wy + 1][wx] = 0;
+        maze[wy + 1][wx + 1] = 0;
+
+        carvePassages(nx, ny);
+      }
+    }
+  }
+
+  // Começa carving da célula (0,0)
+  carvePassages(0, 0);
+
+  // Marca entrada inicial livre (pacman)
+  maze[1][1] = 0;
+  maze[1][2] = 0;
+  maze[2][1] = 0;
+  maze[2][2] = 0;
+
+  // Espelha o lado esquerdo para o direito (simetria horizontal)
+  for (let y = 0; y < rows; y++) {
+    for (let x = 0; x < halfCols; x++) {
       maze[y][cols - 1 - x] = maze[y][x];
     }
   }
 
-  // Bordas externas sólidas
+  // Define bordas sólidas
   for (let y = 0; y < rows; y++) {
     maze[y][0] = 1;
     maze[y][cols - 1] = 1;
@@ -61,17 +112,15 @@ function generateClassicMaze() {
     maze[rows - 1][x] = 1;
   }
 
-  // Área inicial limpa para Pac-Man
-  maze[1][1] = 0;
-  maze[1][2] = 0;
-  maze[2][1] = 0;
-
-  // Túnel central clássico horizontal (simples)
-  let midY = Math.floor(rows / 2);
-  for (let x = Math.floor(cols / 2) - 2; x <= Math.floor(cols / 2) + 2; x++) {
+  // Túnel central horizontal aberto (estilo Pac-Man)
+  const midY = Math.floor(rows / 2);
+  for (let x = halfCols - 2; x <= halfCols + 1; x++) {
     maze[midY][x] = 0;
+    maze[midY - 1][x] = 0;
   }
 }
+
+// --- o resto do código permanece igual ---
 
 const mouse = { x: Math.floor(cols / 2), y: Math.floor(rows / 2) };
 document.addEventListener('mousemove', e => {
@@ -302,7 +351,6 @@ generateClassicMaze();
 placeFruit();
 animate();
 
-// Ajusta o canvas ao redimensionar
 window.addEventListener('resize', () => {
   width = canvas.width = window.innerWidth;
   height = canvas.height = window.innerHeight;
