@@ -10,16 +10,20 @@ const rows = Math.floor(height / tileSize);
 const halfCols = Math.floor(cols / 2);
 
 const mazeColors = [
-  '#fb234e15', '#f8862215', '#f0ed2115',
-  '#47ef2115', '#23d6e315', '#2326e015', '#a221dd15'
+  'rgba(251, 35, 78, 0.15)',  // #fb234e15
+  'rgba(248, 134, 34, 0.15)', // #f8862215
+  'rgba(240, 237, 33, 0.15)', // #f0ed2115
+  'rgba(71, 239, 33, 0.15)',  // #47ef2115
+  'rgba(35, 214, 227, 0.15)', // #23d6e315
+  'rgba(35, 38, 224, 0.15)',  // #2326e015
+  'rgba(162, 33, 221, 0.15)'  // #a221dd15
 ];
 
-let maze = [];
 let baseMazeColor = mazeColors[Math.floor(Math.random() * mazeColors.length)];
-let mazeColor = baseMazeColor;
-let rgbMode = false;
+let rgbMode = true;  // Ativando RGB para teste
 let rgbHue = 0;
 
+let maze = [];
 let fruit = null;
 
 function shuffle(array) {
@@ -31,7 +35,7 @@ function shuffle(array) {
 }
 
 function generateClassicMaze() {
-  // Gera metade direita
+  // Metade direita
   let rightMaze = Array.from({ length: rows }, () => Array(halfCols).fill(1));
   const visited = Array.from({ length: rows }, () => Array(halfCols).fill(false));
 
@@ -60,20 +64,15 @@ function generateClassicMaze() {
 
   carveMaze(1, 1);
 
-  // Cria a matriz do labirinto final
   maze = Array.from({ length: rows }, () => Array(cols).fill(1));
 
-  // Espelha a metade direita para a esquerda
   for (let y = 0; y < rows; y++) {
     for (let x = 0; x < halfCols; x++) {
-      // metade direita original
       maze[y][halfCols + x] = rightMaze[y][x];
-      // metade esquerda espelhada
       maze[y][halfCols - 1 - x] = rightMaze[y][x];
     }
   }
 
-  // Garante paredes externas (todas as bordas 1)
   for (let x = 0; x < cols; x++) {
     maze[0][x] = 1;
     maze[rows - 1][x] = 1;
@@ -83,7 +82,6 @@ function generateClassicMaze() {
     maze[y][cols - 1] = 1;
   }
 
-  // Cria corredores centrais para passagem entre as duas metades
   const middleCol = halfCols - 1;
   const corridorRows = [
     Math.floor(rows / 2) - 1,
@@ -92,19 +90,14 @@ function generateClassicMaze() {
   ];
 
   for (const r of corridorRows) {
-    maze[r][middleCol] = 0;         // coluna central esquerda
-    maze[r][middleCol + 1] = 0;     // coluna central direita
-  }
-
-  // Afina corredor lateral para garantir passagem
-  for (const r of corridorRows) {
+    maze[r][middleCol] = 0;
+    maze[r][middleCol + 1] = 0;
     if (middleCol - 1 > 0) maze[r][middleCol - 1] = 0;
     if (middleCol + 2 < cols) maze[r][middleCol + 2] = 0;
   }
 
   addExtraOpenings(0.08);
 
-  // Garante ponto inicial aberto (lado direito)
   maze[1][cols - 2] = 0;
   maze[1][cols - 3] = 0;
   maze[2][cols - 2] = 0;
@@ -125,7 +118,6 @@ function addExtraOpenings(chance = 0.1) {
 generateClassicMaze();
 
 const mouse = { x: Math.floor(cols / 2), y: Math.floor(rows / 2) };
-
 document.addEventListener('mousemove', e => {
   mouse.x = Math.min(cols - 1, Math.max(0, Math.floor(e.clientX / tileSize)));
   mouse.y = Math.min(rows - 1, Math.max(0, Math.floor(e.clientY / tileSize)));
@@ -170,10 +162,18 @@ let particles = [];
 for (let i = 0; i < 100; i++) particles.push(new Particle());
 
 const pacman = {
-  x: cols - 2, y: 1, px: cols - 2, py: 1,
-  angle: 0, direction: 'right',
-  path: [], speed: 0.07,
-  moving: false, target: null
+  x: cols - 2,
+  y: 1,
+  px: cols - 2,
+  py: 1,
+  angle: 0,
+  direction: 'right',
+  path: [],
+  speed: 0.1,
+  moving: false,
+  target: null,
+  mouthOpen: 0,
+  mouthOpening: true
 };
 
 function heuristic(a, b) {
@@ -194,10 +194,10 @@ function findPath(start, end) {
     const current = openSet.shift();
     if (current.x === end.x && current.y === end.y) {
       const path = [];
-      let temp = nodeKey(current);
-      while (temp in cameFrom) {
-        path.unshift(cameFrom[temp]);
-        temp = nodeKey(cameFrom[temp]);
+      let tempKey = nodeKey(current);
+      while (tempKey in cameFrom) {
+        path.unshift(cameFrom[tempKey]);
+        tempKey = nodeKey(cameFrom[tempKey]);
       }
       return path;
     }
@@ -254,23 +254,21 @@ function drawFruit() {
 
 function updateMazeColor() {
   if (rgbMode) {
-    const opacityHex = baseMazeColor.slice(-2);
-    const rgb = `hsl(${rgbHue}, 100%, 55%)`;
-    mazeColor = hslToHexWithAlpha(rgb, opacityHex);
     rgbHue = (rgbHue + 1) % 360;
+    return `hsla(${rgbHue}, 100%, 60%, 0.15)`;
   } else {
-    mazeColor = baseMazeColor;
+    return baseMazeColor;
   }
 }
 
 function drawMaze() {
-  updateMazeColor();
+  const color = updateMazeColor();
   for (let y = 0; y < rows; y++) {
     for (let x = 0; x < cols; x++) {
       if (maze[y][x] === 1) {
-        ctx.fillStyle = mazeColor;
+        ctx.fillStyle = color;
         ctx.fillRect(x * tileSize, y * tileSize, tileSize, tileSize);
-        ctx.strokeStyle = mazeColor;
+        ctx.strokeStyle = color;
         ctx.lineWidth = 1;
         ctx.strokeRect(x * tileSize, y * tileSize, tileSize, tileSize);
       }
@@ -279,6 +277,15 @@ function drawMaze() {
 }
 
 function updatePacman() {
+  // Atualiza animação da boca do Pacman
+  if (pacman.mouthOpening) {
+    pacman.mouthOpen += 0.06;
+    if (pacman.mouthOpen >= 0.25) pacman.mouthOpening = false;
+  } else {
+    pacman.mouthOpen -= 0.06;
+    if (pacman.mouthOpen <= 0) pacman.mouthOpening = true;
+  }
+
   if (!pacman.moving) {
     const target = { x: mouse.x, y: mouse.y };
     if (pacman.path.length === 0 || Math.random() < 0.02) {
@@ -294,10 +301,12 @@ function updatePacman() {
     const dx = pacman.target.x - pacman.x;
     const dy = pacman.target.y - pacman.y;
 
+    // Interpola suavemente
     pacman.px += dx * pacman.speed;
     pacman.py += dy * pacman.speed;
 
-    if (Math.abs(pacman.px - pacman.target.x) < 0.1 && Math.abs(pacman.py - pacman.target.y) < 0.1) {
+    // Se chegou perto o suficiente, fixa na célula
+    if (Math.abs(pacman.px - pacman.target.x) < 0.05 && Math.abs(pacman.py - pacman.target.y) < 0.05) {
       pacman.x = pacman.target.x;
       pacman.y = pacman.target.y;
       pacman.px = pacman.x;
@@ -315,34 +324,24 @@ function updatePacman() {
 function drawPacman() {
   const cx = pacman.px * tileSize + tileSize / 2;
   const cy = pacman.py * tileSize + tileSize / 2;
-  const radius = tileSize / 2 - 2;
+  const radius = tileSize / 2 - 4;
+  const mouthAngle = pacman.mouthOpen * Math.PI;
 
   ctx.save();
   ctx.translate(cx, cy);
   ctx.rotate(pacman.angle);
+
   ctx.fillStyle = 'yellow';
   ctx.shadowColor = 'yellow';
   ctx.shadowBlur = 15;
 
   ctx.beginPath();
   ctx.moveTo(0, 0);
-  ctx.arc(0, 0, radius, 0.25 * Math.PI, 1.75 * Math.PI, false);
+  ctx.arc(0, 0, radius, mouthAngle, 2 * Math.PI - mouthAngle, false);
   ctx.closePath();
   ctx.fill();
 
   ctx.restore();
-}
-
-function hslToHexWithAlpha(hsl, alphaHex) {
-  // Converts HSL CSS string (ex: hsl(120, 100%, 50%)) to hex + alpha string
-  const ctxTmp = document.createElement('canvas').getContext('2d');
-  ctxTmp.fillStyle = hsl;
-  const rgb = ctxTmp.fillStyle.match(/\d+/g).map(Number);
-  function toHex(c) {
-    const h = c.toString(16);
-    return h.length === 1 ? '0' + h : h;
-  }
-  return `#${toHex(rgb[0])}${toHex(rgb[1])}${toHex(rgb[2])}${alphaHex}`;
 }
 
 function animate() {
