@@ -11,13 +11,13 @@ const rows = Math.floor(height / tileSize);
 
 
 const mazeColors = [
-  '#fb234e15', // Red
-  '#f8862215', // Orange
-  '#f0ed2115', // Yellow
-  '#47ef2115', // Green
-  '#23d6e315', // Cyan
-  '#2326e015', // Blue
-  '#a221dd15', // Mageta
+  '#fb234e', // Red
+  '#f88622', // Orange
+  '#f0ed21', // Yellow
+  '#47ef21', // Green
+  '#23d6e3', // Cyan
+  '#2326e0', // Blue
+  '#a221dd', // Mageta
 ];
 
 
