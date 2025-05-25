@@ -9,8 +9,19 @@ const tileSize = 40;
 const cols = Math.floor(width / tileSize);
 const rows = Math.floor(height / tileSize);
 
+const mazeColors = [
+  '#fb234e15', // Red
+  '#f8862215', // Orange
+  '#f0ed2115', // Yellow
+  '#47ef2115', // Green
+  '#23d6e315', // Cyan
+  '#2326e015', // Blue
+  '#a221dd15'  // Magenta
+];
+
 let maze = [];
-let mazeColor = '#47ef21';
+let baseMazeColor = mazeColors[Math.floor(Math.random() * mazeColors.length)];
+let mazeColor = baseMazeColor;
 let rgbMode = false;
 let rgbHue = 0;
 
@@ -24,15 +35,11 @@ function hasFreeSpaceNear(x, y) {
 }
 
 function generateClassicMaze() {
-  // Inicializa todas as células como parede
   maze = Array.from({ length: rows }, () => Array(cols).fill(1));
 
-  // Carve caminhos horizontais e verticais com padrões simples inspirados em Pac-Man
   for (let y = 1; y < rows - 1; y += 2) {
     for (let x = 1; x < cols - 1; x += 2) {
       maze[y][x] = 0;
-
-      // Carve para direita ou para baixo
       const dir = Math.random() < 0.5 ? 'horizontal' : 'vertical';
       if (dir === 'horizontal' && x + 1 < cols - 1) {
         maze[y][x + 1] = 0;
@@ -42,7 +49,6 @@ function generateClassicMaze() {
     }
   }
 
-  // Garante espaço inicial livre para o Pac-Man
   maze[1][1] = 0;
   maze[1][2] = 0;
   maze[2][1] = 0;
@@ -180,8 +186,12 @@ function drawFruit() {
 
 function updateMazeColor() {
   if (rgbMode) {
-    mazeColor = `hsl(${rgbHue}, 100%, 55%)`;
+    const opacityHex = baseMazeColor.slice(-2);
+    const rgb = `hsl(${rgbHue}, 100%, 55%)`;
+    mazeColor = hslToHexWithAlpha(rgb, opacityHex);
     rgbHue = (rgbHue + 1) % 360;
+  } else {
+    mazeColor = baseMazeColor;
   }
 }
 
@@ -261,6 +271,16 @@ function drawPacman() {
   ctx.shadowBlur = 8;
   ctx.fill();
   ctx.restore();
+}
+
+function hslToHexWithAlpha(hsl, alphaHex) {
+  const temp = document.createElement('div');
+  temp.style.color = hsl;
+  document.body.appendChild(temp);
+  const rgb = window.getComputedStyle(temp).color;
+  document.body.removeChild(temp);
+  const [r, g, b] = rgb.match(/\d+/g).map(Number);
+  return `#${[r, g, b].map(x => x.toString(16).padStart(2, '0')).join('')}${alphaHex}`;
 }
 
 function animate() {
