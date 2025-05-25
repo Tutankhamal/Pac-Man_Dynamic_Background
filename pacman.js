@@ -1,4 +1,4 @@
-// Pac-Man Background com frutinha e RGB dinâmico
+// Pac-Man Background com labirinto em estilo clássico
 const canvas = document.getElementById('retro-bg');
 const ctx = canvas.getContext('2d');
 
@@ -18,31 +18,37 @@ let fruit = null;
 
 function hasFreeSpaceNear(x, y) {
   const neighbors = [
-    [x + 1, y],
-    [x - 1, y],
-    [x, y + 1],
-    [x, y - 1]
+    [x + 1, y], [x - 1, y], [x, y + 1], [x, y - 1]
   ];
   return neighbors.some(([nx, ny]) => maze[ny] && maze[ny][nx] === 0);
 }
 
-function generateMaze() {
-  do {
-    maze = [];
-    for (let y = 0; y < rows; y++) {
-      maze[y] = [];
-      for (let x = 0; x < cols; x++) {
-        if (x === 0 || y === 0 || x === cols - 1 || y === rows - 1) {
-          maze[y][x] = 1;
-        } else {
-          maze[y][x] = Math.random() < 0.2 ? 1 : 0;
-        }
+function generateClassicMaze() {
+  // Inicializa todas as células como parede
+  maze = Array.from({ length: rows }, () => Array(cols).fill(1));
+
+  // Carve caminhos horizontais e verticais com padrões simples inspirados em Pac-Man
+  for (let y = 1; y < rows - 1; y += 2) {
+    for (let x = 1; x < cols - 1; x += 2) {
+      maze[y][x] = 0;
+
+      // Carve para direita ou para baixo
+      const dir = Math.random() < 0.5 ? 'horizontal' : 'vertical';
+      if (dir === 'horizontal' && x + 1 < cols - 1) {
+        maze[y][x + 1] = 0;
+      } else if (y + 1 < rows - 1) {
+        maze[y + 1][x] = 0;
       }
     }
-  } while (!hasFreeSpaceNear(1, 1));
+  }
+
+  // Garante espaço inicial livre para o Pac-Man
+  maze[1][1] = 0;
+  maze[1][2] = 0;
+  maze[2][1] = 0;
 }
 
-generateMaze();
+generateClassicMaze();
 
 const mouse = { x: Math.floor(cols / 2), y: Math.floor(rows / 2) };
 
@@ -52,9 +58,7 @@ document.addEventListener('mousemove', e => {
 });
 
 class Particle {
-  constructor() {
-    this.reset();
-  }
+  constructor() { this.reset(); }
   reset() {
     this.x = Math.random() * width;
     this.y = Math.random() * height;
@@ -78,7 +82,6 @@ class Particle {
     const dist = Math.sqrt(dx * dx + dy * dy);
     const maxDist = 120;
     const force = (maxDist - dist) / maxDist;
-
     if (dist < maxDist) {
       this.x += dx / dist * force * 1.2;
       this.y += dy / dist * force * 1.2;
@@ -90,21 +93,13 @@ class Particle {
 }
 
 let particles = [];
-for (let i = 0; i < 100; i++) {
-  particles.push(new Particle());
-}
+for (let i = 0; i < 100; i++) particles.push(new Particle());
 
 const pacman = {
-  x: 1,
-  y: 1,
-  px: 1,
-  py: 1,
-  angle: 0,
-  direction: 'right',
-  path: [],
-  speed: 0.07,
-  moving: false,
-  target: null
+  x: 1, y: 1, px: 1, py: 1,
+  angle: 0, direction: 'right',
+  path: [], speed: 0.07,
+  moving: false, target: null
 };
 
 function heuristic(a, b) {
@@ -116,11 +111,7 @@ function findPath(start, end) {
   const cameFrom = {};
   const gScore = {};
   const fScore = {};
-
-  function nodeKey(n) {
-    return `${n.x},${n.y}`;
-  }
-
+  function nodeKey(n) { return `${n.x},${n.y}`; }
   gScore[nodeKey(start)] = 0;
   fScore[nodeKey(start)] = heuristic(start, end);
 
@@ -180,13 +171,7 @@ function placeFruit() {
 function drawFruit() {
   if (!fruit) return;
   ctx.beginPath();
-  ctx.arc(
-    fruit.x * tileSize + tileSize / 2,
-    fruit.y * tileSize + tileSize / 2,
-    tileSize / 4,
-    0,
-    Math.PI * 2
-  );
+  ctx.arc(fruit.x * tileSize + tileSize / 2, fruit.y * tileSize + tileSize / 2, tileSize / 4, 0, Math.PI * 2);
   ctx.fillStyle = 'red';
   ctx.shadowColor = 'red';
   ctx.shadowBlur = 10;
@@ -224,7 +209,6 @@ function updatePacman() {
     if (pacman.path.length > 0) {
       pacman.target = pacman.path.shift();
       pacman.moving = true;
-
       if (pacman.target.x > pacman.px) pacman.direction = 'right';
       else if (pacman.target.x < pacman.px) pacman.direction = 'left';
       else if (pacman.target.y > pacman.py) pacman.direction = 'down';
@@ -236,7 +220,6 @@ function updatePacman() {
     const dx = pacman.target.x - pacman.px;
     const dy = pacman.target.y - pacman.py;
     const dist = Math.sqrt(dx * dx + dy * dy);
-
     if (dist < pacman.speed) {
       pacman.px = pacman.target.x;
       pacman.py = pacman.target.y;
@@ -244,7 +227,6 @@ function updatePacman() {
       pacman.x = pacman.target.x;
       pacman.y = pacman.target.y;
       pacman.target = null;
-
       if (fruit && pacman.x === fruit.x && pacman.y === fruit.y) {
         fruit = null;
         rgbMode = true;
@@ -262,13 +244,11 @@ function drawPacman() {
   const cy = pacman.py * tileSize + tileSize / 2;
   const r = tileSize / 2 - 4;
   const mouth = Math.abs(Math.sin(pacman.angle)) * Math.PI / 5;
-
   let rotation = 0;
   if (pacman.direction === 'right') rotation = 0;
   else if (pacman.direction === 'left') rotation = Math.PI;
   else if (pacman.direction === 'up') rotation = -Math.PI / 2;
   else if (pacman.direction === 'down') rotation = Math.PI / 2;
-
   ctx.save();
   ctx.translate(cx, cy);
   ctx.rotate(rotation);
