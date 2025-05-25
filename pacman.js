@@ -1,9 +1,3 @@
-const canvas = document.getElementById('retro-bg');
-const ctx = canvas.getContext('2d');
-
-let width = canvas.width = window.innerWidth;
-let height = canvas.height = window.innerHeight;
-
 const tileSize = 40;
 const cols = Math.floor(width / tileSize);
 const rows = Math.floor(height / tileSize);
@@ -59,32 +53,29 @@ function generateClassicMaze() {
 
   carveMaze(1, 1);
 
-  // Espelha para criar o labirinto completo
+  // Espelha horizontalmente e adiciona túnel central
   maze = Array.from({ length: rows }, (_, y) => {
     const mirroredRow = [...leftMaze[y]];
+    const rightHalf = [...mirroredRow].reverse();
+
+    const row = (cols % 2 === 0)
+      ? mirroredRow.concat(rightHalf)
+      : mirroredRow.concat([0], rightHalf);
+
     const middleCol = Math.floor(cols / 2);
-
-    // Se número de colunas for ímpar, adiciona uma coluna central
-    let row = (cols % 2 === 0)
-      ? mirroredRow.concat([...mirroredRow].reverse())
-      : mirroredRow.concat([1], [...mirroredRow].reverse());
-
-    // Garante passagens centrais (túnel)
-    const tunnelRows = [Math.floor(rows / 2) - 1, Math.floor(rows / 2), Math.floor(rows / 2) + 1];
-    if (tunnelRows.includes(y)) {
+    const corridorRange = [Math.floor(rows / 2) - 1, Math.floor(rows / 2), Math.floor(rows / 2) + 1];
+    if (corridorRange.includes(y)) {
       row[middleCol] = 0;
     }
 
     return row;
   });
 
-  // Garante acessibilidade inicial
+  addExtraOpenings(0.08);
+
   maze[1][1] = 0;
   maze[1][2] = 0;
   maze[2][1] = 0;
-
-  // Adiciona aberturas extras depois do espelhamento
-  addExtraOpenings(0.08);
 }
 
 function addExtraOpenings(chance = 0.1) {
@@ -162,7 +153,7 @@ function findPath(start, end) {
   const cameFrom = {};
   const gScore = {};
   const fScore = {};
-  function nodeKey(n) { return `${n.x},${n.y}`; }
+  function nodeKey(n) { return ${n.x},${n.y}; }
   gScore[nodeKey(start)] = 0;
   fScore[nodeKey(start)] = heuristic(start, end);
 
@@ -232,7 +223,7 @@ function drawFruit() {
 function updateMazeColor() {
   if (rgbMode) {
     const opacityHex = baseMazeColor.slice(-2);
-    const rgb = `hsl(${rgbHue}, 100%, 55%)`;
+    const rgb = hsl(${rgbHue}, 100%, 55%);
     mazeColor = hslToHexWithAlpha(rgb, opacityHex);
     rgbHue = (rgbHue + 1) % 360;
   } else {
@@ -282,97 +273,66 @@ function updatePacman() {
       pacman.x = pacman.target.x;
       pacman.y = pacman.target.y;
       pacman.target = null;
-
-      // Checa fruta
       if (fruit && pacman.x === fruit.x && pacman.y === fruit.y) {
         fruit = null;
         rgbMode = true;
-        setTimeout(() => { rgbMode = false; }, 7000);
-        placeFruit();
       }
     } else {
-      pacman.px += dx / dist * pacman.speed;
-      pacman.py += dy / dist * pacman.speed;
+      pacman.px += (dx / dist) * pacman.speed;
+      pacman.py += (dy / dist) * pacman.speed;
     }
   }
+  pacman.angle += 0.2;
 }
 
 function drawPacman() {
-  const centerX = pacman.px * tileSize + tileSize / 2;
-  const centerY = pacman.py * tileSize + tileSize / 2;
-  const radius = tileSize / 2.1;
-  let startAngle = 0.25 * Math.PI;
-  let endAngle = 1.75 * Math.PI;
-
-  switch (pacman.direction) {
-    case 'right': startAngle = 0.25 * Math.PI; endAngle = 1.75 * Math.PI; break;
-    case 'left': startAngle = 1.25 * Math.PI; endAngle = 0.75 * Math.PI; break;
-    case 'up': startAngle = 1.75 * Math.PI; endAngle = 1.25 * Math.PI; break;
-    case 'down': startAngle = 0.75 * Math.PI; endAngle = 0.25 * Math.PI; break;
-  }
-
-  // Boca animada
-  const time = Date.now() / 200;
-  const mouthOpen = Math.abs(Math.sin(time)) * 0.25 + 0.15;
-  const openAngle = mouthOpen * Math.PI;
-
-  ctx.fillStyle = '#FCE303';
-  ctx.strokeStyle = '#000000';
-  ctx.lineWidth = 3;
-  ctx.shadowColor = 'yellow';
-  ctx.shadowBlur = 15;
-
+  const cx = pacman.px * tileSize + tileSize / 2;
+  const cy = pacman.py * tileSize + tileSize / 2;
+  const r = tileSize / 2 - 4;
+  const mouth = Math.abs(Math.sin(pacman.angle)) * Math.PI / 5;
+  let rotation = 0;
+  if (pacman.direction === 'right') rotation = 0;
+  else if (pacman.direction === 'left') rotation = Math.PI;
+  else if (pacman.direction === 'up') rotation = -Math.PI / 2;
+  else if (pacman.direction === 'down') rotation = Math.PI / 2;
+  ctx.save();
+  ctx.translate(cx, cy);
+  ctx.rotate(rotation);
   ctx.beginPath();
-  ctx.moveTo(centerX, centerY);
-  ctx.arc(centerX, centerY, radius, startAngle + openAngle, endAngle - openAngle);
-  ctx.closePath();
+  ctx.moveTo(0, 0);
+  ctx.arc(0, 0, r, mouth, 2 * Math.PI - mouth);
+  ctx.lineTo(0, 0);
+  ctx.fillStyle = '#d4c05a';
+  ctx.shadowColor = '#d4c05a';
+  ctx.shadowBlur = 8;
   ctx.fill();
-  ctx.stroke();
-
-  // Olho
-  ctx.beginPath();
-  ctx.fillStyle = '#000';
-  let eyeX = centerX + Math.cos((startAngle + endAngle) / 2) * radius / 2;
-  let eyeY = centerY + Math.sin((startAngle + endAngle) / 2) * radius / 2 - 5;
-  ctx.arc(eyeX, eyeY, 4, 0, Math.PI * 2);
-  ctx.fill();
+  ctx.restore();
 }
 
 function hslToHexWithAlpha(hsl, alphaHex) {
-  // Recebe hsl string tipo "hsl(120, 100%, 50%)"
-  const ctxTemp = document.createElement('canvas').getContext('2d');
-  ctxTemp.fillStyle = hsl;
-  const rgb = ctxTemp.fillStyle;
-  // rgb fica tipo 'rgb(r, g, b)'
-  const rgbValues = rgb.match(/\d+/g);
-  const r = parseInt(rgbValues[0]).toString(16).padStart(2, '0');
-  const g = parseInt(rgbValues[1]).toString(16).padStart(2, '0');
-  const b = parseInt(rgbValues[2]).toString(16).padStart(2, '0');
-  return `#${r}${g}${b}${alphaHex}`;
+  const temp = document.createElement('div');
+  temp.style.color = hsl;
+  document.body.appendChild(temp);
+  const rgb = window.getComputedStyle(temp).color;
+  document.body.removeChild(temp);
+  const [r, g, b] = rgb.match(/\d+/g).map(Number);
+  return #${[r, g, b].map(x => x.toString(16).padStart(2, '0')).join('')}${alphaHex};
 }
 
-function loop() {
+function animate() {
   ctx.clearRect(0, 0, width, height);
-
-  particles.forEach(p => {
-    p.update();
-    p.draw();
-  });
-
   drawMaze();
   drawFruit();
-
   updatePacman();
   drawPacman();
-
-  requestAnimationFrame(loop);
+  particles.forEach(p => { p.update(); p.draw(); });
+  requestAnimationFrame(animate);
 }
 
 placeFruit();
-loop();
+animate();
 
 window.addEventListener('resize', () => {
   width = canvas.width = window.innerWidth;
   height = canvas.height = window.innerHeight;
 });
-
