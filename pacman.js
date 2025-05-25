@@ -31,7 +31,6 @@ function shuffle(array) {
 }
 
 function generateClassicMaze() {
-  // Gera metade do labirinto
   let leftMaze = Array.from({ length: rows }, () => Array(halfCols).fill(1));
   const visited = Array.from({ length: rows }, () => Array(halfCols).fill(false));
 
@@ -60,20 +59,26 @@ function generateClassicMaze() {
 
   carveMaze(1, 1);
 
-  // Espelha horizontalmente
+  // Espelha horizontalmente e adiciona túnel central
   maze = Array.from({ length: rows }, (_, y) => {
     const mirroredRow = [...leftMaze[y]];
     const rightHalf = [...mirroredRow].reverse();
-    // Se número de colunas é ímpar, duplicamos a coluna do meio
-    return (cols % 2 === 0)
+
+    const row = (cols % 2 === 0)
       ? mirroredRow.concat(rightHalf)
       : mirroredRow.concat([0], rightHalf);
+
+    const middleCol = Math.floor(cols / 2);
+    const corridorRange = [Math.floor(rows / 2) - 1, Math.floor(rows / 2), Math.floor(rows / 2) + 1];
+    if (corridorRange.includes(y)) {
+      row[middleCol] = 0;
+    }
+
+    return row;
   });
 
-  // Buracos extras
   addExtraOpenings(0.08);
 
-  // Garante início livre
   maze[1][1] = 0;
   maze[1][2] = 0;
   maze[2][1] = 0;
