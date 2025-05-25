@@ -1,3 +1,4 @@
+// Pac-Man Background com labirinto em estilo clássico aprimorado
 const canvas = document.getElementById('retro-bg');
 const ctx = canvas.getContext('2d');
 
@@ -8,49 +9,76 @@ const tileSize = 40;
 const cols = Math.floor(width / tileSize);
 const rows = Math.floor(height / tileSize);
 
-// Labirinto fixo clássico estilo Pac-Man (15x15, pode ser ajustado)
-// 1 = parede, 0 = caminho
-// Lembre de ajustar se o canvas for muito maior (será centralizado)
-const fixedMaze = [
-  [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
-  [1,0,0,0,1,0,0,0,0,0,1,0,0,0,1],
-  [1,0,1,0,1,0,1,1,1,0,1,0,1,0,1],
-  [1,0,1,0,0,0,0,1,0,0,0,0,1,0,1],
-  [1,0,1,1,1,1,0,1,0,1,1,1,1,0,1],
-  [1,0,0,0,0,1,0,0,0,1,0,0,0,0,1],
-  [1,1,1,1,0,1,1,1,1,1,0,1,1,1,1],
-  [1,0,0,1,0,0,0,2,0,0,0,1,0,0,1], // 2 = posição inicial do Pac-Man
-  [1,1,0,1,0,1,1,1,1,1,0,1,0,1,1],
-  [1,0,0,0,0,1,0,0,0,1,0,0,0,0,1],
-  [1,0,1,1,1,1,0,1,0,1,1,1,1,0,1],
-  [1,0,1,0,0,0,0,1,0,0,0,0,1,0,1],
-  [1,0,1,0,1,0,1,1,1,0,1,0,1,0,1],
-  [1,0,0,0,1,0,0,0,0,0,1,0,0,0,1],
-  [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1]
+const mazeColors = [
+  '#fb234e15', '#f8862215', '#f0ed2115', '#47ef2115', '#23d6e315', '#2326e015', '#a221dd15'
 ];
 
-// Ajusta posição inicial do Pac-Man:
-let pacman = {
-  x: 7,
-  y: 7,
-  px: 7,
-  py: 7,
-  angle: 0,
-  direction: 'right',
-  path: [],
-  speed: 0.07,
-  moving: false,
-  target: null
-};
+let maze = [];
+let baseMazeColor = mazeColors[Math.floor(Math.random() * mazeColors.length)];
+let mazeColor = baseMazeColor;
+let rgbMode = false;
+let rgbHue = 0;
+let fruit = null;
 
-// Mouse (posição alvo):
-const mouse = { x: pacman.x, y: pacman.y };
+function generateClassicMaze() {
+  // Inicializa tudo com parede (1)
+  maze = Array.from({ length: rows }, () => Array(cols).fill(1));
+
+  // Cria corredores largos de largura 2 (2 células livres lado a lado)
+  for (let y = 1; y < rows - 1; y++) {
+    for (let x = 1; x < Math.floor(cols / 2) - 1; x++) {
+      if (y % 2 === 1 && x % 2 === 1) {
+        maze[y][x] = 0;
+        maze[y][x + 1] = 0; // corredor largo horizontal
+      }
+    }
+  }
+
+  // Cria corredores verticais largos em intervalos para interligar caminhos
+  for (let x = 1; x < Math.floor(cols / 2) - 1; x += 4) {
+    for (let y = 1; y < rows - 1; y++) {
+      if (y % 2 === 1) {
+        maze[y][x] = 0;
+        maze[y][x + 1] = 0;
+      }
+    }
+  }
+
+  // Espelha lado esquerdo para lado direito (simetria horizontal)
+  for (let y = 0; y < rows; y++) {
+    for (let x = 0; x < Math.floor(cols / 2); x++) {
+      maze[y][cols - 1 - x] = maze[y][x];
+    }
+  }
+
+  // Bordas externas sólidas
+  for (let y = 0; y < rows; y++) {
+    maze[y][0] = 1;
+    maze[y][cols - 1] = 1;
+  }
+  for (let x = 0; x < cols; x++) {
+    maze[0][x] = 1;
+    maze[rows - 1][x] = 1;
+  }
+
+  // Área inicial limpa para Pac-Man
+  maze[1][1] = 0;
+  maze[1][2] = 0;
+  maze[2][1] = 0;
+
+  // Túnel central clássico horizontal (simples)
+  let midY = Math.floor(rows / 2);
+  for (let x = Math.floor(cols / 2) - 2; x <= Math.floor(cols / 2) + 2; x++) {
+    maze[midY][x] = 0;
+  }
+}
+
+const mouse = { x: Math.floor(cols / 2), y: Math.floor(rows / 2) };
 document.addEventListener('mousemove', e => {
   mouse.x = Math.min(cols - 1, Math.max(0, Math.floor(e.clientX / tileSize)));
   mouse.y = Math.min(rows - 1, Math.max(0, Math.floor(e.clientY / tileSize)));
 });
 
-// Partículas de fundo:
 class Particle {
   constructor() { this.reset(); }
   reset() {
@@ -89,25 +117,11 @@ class Particle {
 let particles = [];
 for (let i = 0; i < 100; i++) particles.push(new Particle());
 
-// Função para desenhar o labirinto:
-function drawMaze() {
-  ctx.fillStyle = '#001830'; // Fundo escuro
-  ctx.fillRect(0, 0, width, height);
-  for (let y = 0; y < fixedMaze.length; y++) {
-    for (let x = 0; x < fixedMaze[y].length; x++) {
-      if (fixedMaze[y][x] === 1) {
-        ctx.fillStyle = '#173a7f'; // Cor da parede azul clássico
-        ctx.fillRect(x * tileSize, y * tileSize, tileSize, tileSize);
-        // Borda das paredes para efeito clássico
-        ctx.strokeStyle = '#95a1d3';
-        ctx.lineWidth = 2;
-        ctx.strokeRect(x * tileSize, y * tileSize, tileSize, tileSize);
-      }
-    }
-  }
-}
+const pacman = {
+  x: 1, y: 1, px: 1, py: 1, angle: 0, direction: 'right',
+  path: [], speed: 0.07, moving: false, target: null
+};
 
-// Função para encontrar caminho com A* (mesmo do código anterior)
 function heuristic(a, b) {
   return Math.abs(a.x - b.x) + Math.abs(a.y - b.y);
 }
@@ -136,7 +150,7 @@ function findPath(start, end) {
       { x: current.x, y: current.y + 1 },
       { x: current.x, y: current.y - 1 }
     ].forEach(neighbor => {
-      if (neighbor.x < 0 || neighbor.x >= fixedMaze[0].length || neighbor.y < 0 || neighbor.y >= fixedMaze.length || fixedMaze[neighbor.y][neighbor.x] === 1) return;
+      if (neighbor.x < 0 || neighbor.x >= cols || neighbor.y < 0 || neighbor.y >= rows || maze[neighbor.y][neighbor.x] === 1) return;
       const tentativeG = gScore[nodeKey(current)] + 1;
       const key = nodeKey(neighbor);
       if (!(key in gScore) || tentativeG < gScore[key]) {
@@ -150,12 +164,57 @@ function findPath(start, end) {
   return [];
 }
 
-// Atualiza Pac-Man
+function placeFruit() {
+  while (true) {
+    const fx = Math.floor(Math.random() * cols);
+    const fy = Math.floor(Math.random() * rows);
+    if (maze[fy][fx] === 0 && (fx !== pacman.x || fy !== pacman.y)) {
+      fruit = { x: fx, y: fy };
+      break;
+    }
+  }
+}
+
+function drawFruit() {
+  if (!fruit) return;
+  ctx.beginPath();
+  ctx.arc(fruit.x * tileSize + tileSize / 2, fruit.y * tileSize + tileSize / 2, tileSize / 4, 0, Math.PI * 2);
+  ctx.fillStyle = 'red';
+  ctx.shadowColor = 'red';
+  ctx.shadowBlur = 10;
+  ctx.fill();
+}
+
+function updateMazeColor() {
+  if (rgbMode) {
+    const opacityHex = baseMazeColor.slice(-2);
+    const rgb = `hsl(${rgbHue}, 100%, 55%)`;
+    mazeColor = hslToHexWithAlpha(rgb, opacityHex);
+    rgbHue = (rgbHue + 1) % 360;
+  } else {
+    mazeColor = baseMazeColor;
+  }
+}
+
+function drawMaze() {
+  updateMazeColor();
+  for (let y = 0; y < rows; y++) {
+    for (let x = 0; x < cols; x++) {
+      if (maze[y][x] === 1) {
+        ctx.fillStyle = mazeColor;
+        ctx.fillRect(x * tileSize, y * tileSize, tileSize, tileSize);
+        ctx.strokeStyle = mazeColor;
+        ctx.lineWidth = 1;
+        ctx.strokeRect(x * tileSize, y * tileSize, tileSize, tileSize);
+      }
+    }
+  }
+}
+
 function updatePacman() {
   if (!pacman.moving) {
     const target = { x: mouse.x, y: mouse.y };
-    // Só move se o destino for caminho e diferente do atual
-    if (fixedMaze[target.y] && fixedMaze[target.y][target.x] === 0 && (target.x !== Math.round(pacman.px) || target.y !== Math.round(pacman.py))) {
+    if (pacman.path.length === 0 || Math.random() < 0.02) {
       pacman.path = findPath({ x: Math.round(pacman.px), y: Math.round(pacman.py) }, target);
     }
     if (pacman.path.length > 0) {
@@ -167,6 +226,7 @@ function updatePacman() {
       else if (pacman.target.y < pacman.py) pacman.direction = 'up';
     }
   }
+
   if (pacman.moving && pacman.target) {
     const dx = pacman.target.x - pacman.px;
     const dy = pacman.target.y - pacman.py;
@@ -178,6 +238,10 @@ function updatePacman() {
       pacman.x = pacman.target.x;
       pacman.y = pacman.target.y;
       pacman.target = null;
+      if (fruit && pacman.x === fruit.x && pacman.y === fruit.y) {
+        fruit = null;
+        rgbMode = true;
+      }
     } else {
       pacman.px += (dx / dist) * pacman.speed;
       pacman.py += (dy / dist) * pacman.speed;
@@ -186,7 +250,6 @@ function updatePacman() {
   pacman.angle += 0.2;
 }
 
-// Desenha Pac-Man
 function drawPacman() {
   const cx = pacman.px * tileSize + tileSize / 2;
   const cy = pacman.py * tileSize + tileSize / 2;
@@ -211,19 +274,35 @@ function drawPacman() {
   ctx.restore();
 }
 
-// Loop de animação:
+function hslToHexWithAlpha(hsl, alphaHex) {
+  const temp = document.createElement('div');
+  temp.style.color = hsl;
+  document.body.appendChild(temp);
+  const rgb = window.getComputedStyle(temp).color;
+  document.body.removeChild(temp);
+  const [r, g, b] = rgb.match(/\d+/g).map(Number);
+  return `#${[r, g, b].map(x => x.toString(16).padStart(2, '0')).join('')}${alphaHex}`;
+}
+
 function animate() {
   ctx.clearRect(0, 0, width, height);
   drawMaze();
-  particles.forEach(p => { p.update(); p.draw(); });
+  drawFruit();
   updatePacman();
   drawPacman();
+  particles.forEach(p => {
+    p.update();
+    p.draw();
+  });
   requestAnimationFrame(animate);
 }
 
-// Inicia
+// Inicializa
+generateClassicMaze();
+placeFruit();
 animate();
 
+// Ajusta o canvas ao redimensionar
 window.addEventListener('resize', () => {
   width = canvas.width = window.innerWidth;
   height = canvas.height = window.innerHeight;
