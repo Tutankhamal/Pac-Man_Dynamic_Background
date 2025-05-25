@@ -1,5 +1,3 @@
-<canvas id="retro-bg" style="position:fixed;top:0;left:0;width:100%;height:100%;z-index:-1;"></canvas>
-<script>
 const canvas = document.getElementById('retro-bg');
 const ctx = canvas.getContext('2d');
 
@@ -7,46 +5,33 @@ let width = canvas.width = window.innerWidth;
 let height = canvas.height = window.innerHeight;
 
 const tileSize = 40;
-let cols = Math.floor(width / tileSize);
-let rows = Math.floor(height / tileSize);
-let halfCols = Math.floor(cols / 2);
+const cols = Math.floor(width / tileSize);
+const rows = Math.floor(height / tileSize);
+const halfCols = Math.floor(cols / 2);
 
 const mazeColors = [
-  '#fb234e15', '#f8862215', '#f0ed2115', '#47ef2115',
-  '#23d6e315', '#2326e015', '#a221dd15'
+  '#fb234e15', '#f8862215', '#f0ed2115',
+  '#47ef2115', '#23d6e315', '#2326e015', '#a221dd15'
 ];
+
 let maze = [];
 let baseMazeColor = mazeColors[Math.floor(Math.random() * mazeColors.length)];
 let mazeColor = baseMazeColor;
 let rgbMode = false;
 let rgbHue = 0;
+
 let fruit = null;
 
-function shuffle(arr) {
-  for (let i = arr.length - 1; i > 0; i--) {
+function shuffle(array) {
+  for (let i = array.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
-    [arr[i], arr[j]] = [arr[j], arr[i]];
+    [array[i], array[j]] = [array[j], array[i]];
   }
-  return arr;
-}
-
-function addExtraOpenings(probability = 0.1) {
-  for (let y = 1; y < rows - 1; y++) {
-    for (let x = 1; x < cols - 1; x++) {
-      if (maze[y][x] === 1) {
-        const neighbors = [
-          maze[y - 1][x], maze[y + 1][x],
-          maze[y][x - 1], maze[y][x + 1]
-        ];
-        if (neighbors.includes(0) && Math.random() < probability) {
-          maze[y][x] = 0;
-        }
-      }
-    }
-  }
+  return array;
 }
 
 function generateClassicMaze() {
+  // Gera metade do labirinto
   let leftMaze = Array.from({ length: rows }, () => Array(halfCols).fill(1));
   const visited = Array.from({ length: rows }, () => Array(halfCols).fill(false));
 
@@ -75,31 +60,35 @@ function generateClassicMaze() {
 
   carveMaze(1, 1);
 
-  // Construção do labirinto completo com espelhamento
+  // Espelha horizontalmente
   maze = Array.from({ length: rows }, (_, y) => {
     const mirroredRow = [...leftMaze[y]];
     const rightHalf = [...mirroredRow].reverse();
-
-    // Se número de colunas for ímpar, crie a coluna central aberta em alguns pontos
-    if (cols % 2 !== 0) {
-      const center = [];
-      for (let row = 0; row < rows; row++) {
-        const left = mirroredRow[Math.floor(halfCols) - 1];
-        const right = rightHalf[Math.floor(halfCols) - 1];
-        center[row] = (left === 0 || right === 0 || Math.random() < 0.6) ? 0 : 1;
-      }
-      return mirroredRow.concat([center[y]], rightHalf);
-    }
-
-    return mirroredRow.concat(rightHalf);
+    // Se número de colunas é ímpar, duplicamos a coluna do meio
+    return (cols % 2 === 0)
+      ? mirroredRow.concat(rightHalf)
+      : mirroredRow.concat([0], rightHalf);
   });
 
+  // Buracos extras
   addExtraOpenings(0.08);
 
   // Garante início livre
   maze[1][1] = 0;
   maze[1][2] = 0;
   maze[2][1] = 0;
+}
+
+function addExtraOpenings(chance = 0.1) {
+  for (let y = 1; y < rows - 1; y++) {
+    for (let x = 1; x < cols - 1; x++) {
+      if (maze[y][x] === 1 && Math.random() < chance) {
+        if ((x % 2 === 1) || (y % 2 === 1)) {
+          maze[y][x] = 0;
+        }
+      }
+    }
+  }
 }
 
 generateClassicMaze();
@@ -347,10 +336,4 @@ animate();
 window.addEventListener('resize', () => {
   width = canvas.width = window.innerWidth;
   height = canvas.height = window.innerHeight;
-  cols = Math.floor(width / tileSize);
-  rows = Math.floor(height / tileSize);
-  halfCols = Math.floor(cols / 2);
-  generateClassicMaze();
-  placeFruit();
 });
-</script>
