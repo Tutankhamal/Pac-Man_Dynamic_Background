@@ -1,4 +1,4 @@
-// Pac-Man Background com labirinto em estilo clássico
+// Pac-Man Background com labirinto em estilo clássico aprimorado
 const canvas = document.getElementById('retro-bg');
 const ctx = canvas.getContext('2d');
 
@@ -10,13 +10,7 @@ const cols = Math.floor(width / tileSize);
 const rows = Math.floor(height / tileSize);
 
 const mazeColors = [
-  '#fb234e15', // Red
-  '#f8862215', // Orange
-  '#f0ed2115', // Yellow
-  '#47ef2115', // Green
-  '#23d6e315', // Cyan
-  '#2326e015', // Blue
-  '#a221dd15'  // Magenta
+  '#fb234e15', '#f8862215', '#f0ed2115', '#47ef2115', '#23d6e315', '#2326e015', '#a221dd15'
 ];
 
 let maze = [];
@@ -24,40 +18,46 @@ let baseMazeColor = mazeColors[Math.floor(Math.random() * mazeColors.length)];
 let mazeColor = baseMazeColor;
 let rgbMode = false;
 let rgbHue = 0;
-
 let fruit = null;
-
-function hasFreeSpaceNear(x, y) {
-  const neighbors = [
-    [x + 1, y], [x - 1, y], [x, y + 1], [x, y - 1]
-  ];
-  return neighbors.some(([nx, ny]) => maze[ny] && maze[ny][nx] === 0);
-}
 
 function generateClassicMaze() {
   maze = Array.from({ length: rows }, () => Array(cols).fill(1));
+  const stack = [{ x: 1, y: 1 }];
+  maze[1][1] = 0;
+  const directions = [
+    { dx: 2, dy: 0 }, { dx: -2, dy: 0 }, { dx: 0, dy: 2 }, { dx: 0, dy: -2 }
+  ];
 
-  for (let y = 1; y < rows - 1; y += 2) {
-    for (let x = 1; x < cols - 1; x += 2) {
-      maze[y][x] = 0;
-      const dir = Math.random() < 0.5 ? 'horizontal' : 'vertical';
-      if (dir === 'horizontal' && x + 1 < cols - 1) {
-        maze[y][x + 1] = 0;
-      } else if (y + 1 < rows - 1) {
-        maze[y + 1][x] = 0;
+  while (stack.length > 0) {
+    const current = stack.pop();
+    const { x, y } = current;
+    const shuffled = directions.sort(() => Math.random() - 0.5);
+
+    for (const { dx, dy } of shuffled) {
+      const nx = x + dx, ny = y + dy;
+      if (nx > 0 && nx < cols - 1 && ny > 0 && ny < rows - 1 && maze[ny][nx] === 1) {
+        maze[ny][nx] = 0;
+        maze[y + dy / 2][x + dx / 2] = 0;
+        stack.push({ x: nx, y: ny });
       }
     }
   }
 
-  maze[1][1] = 0;
-  maze[1][2] = 0;
-  maze[2][1] = 0;
+  for (let y = 1; y < rows - 1; y++) {
+    for (let x = 1; x < cols - 1; x++) {
+      if (maze[y][x] === 0 && Math.random() < 0.3) {
+        [[1,0], [-1,0], [0,1], [0,-1]].forEach(([dx, dy]) => {
+          const nx = x + dx, ny = y + dy;
+          if (maze[ny] && maze[ny][nx] === 1) maze[ny][nx] = 0;
+        });
+      }
+    }
+  }
+
+  maze[1][1] = maze[1][2] = maze[2][1] = 0;
 }
 
-generateClassicMaze();
-
 const mouse = { x: Math.floor(cols / 2), y: Math.floor(rows / 2) };
-
 document.addEventListener('mousemove', e => {
   mouse.x = Math.min(cols - 1, Math.max(0, Math.floor(e.clientX / tileSize)));
   mouse.y = Math.min(rows - 1, Math.max(0, Math.floor(e.clientY / tileSize)));
@@ -102,10 +102,8 @@ let particles = [];
 for (let i = 0; i < 100; i++) particles.push(new Particle());
 
 const pacman = {
-  x: 1, y: 1, px: 1, py: 1,
-  angle: 0, direction: 'right',
-  path: [], speed: 0.07,
-  moving: false, target: null
+  x: 1, y: 1, px: 1, py: 1, angle: 0, direction: 'right',
+  path: [], speed: 0.07, moving: false, target: null
 };
 
 function heuristic(a, b) {
@@ -113,11 +111,8 @@ function heuristic(a, b) {
 }
 
 function findPath(start, end) {
-  const openSet = [start];
-  const cameFrom = {};
-  const gScore = {};
-  const fScore = {};
-  function nodeKey(n) { return `${n.x},${n.y}`; }
+  const openSet = [start], cameFrom = {}, gScore = {}, fScore = {};
+  const nodeKey = n => `${n.x},${n.y}`;
   gScore[nodeKey(start)] = 0;
   fScore[nodeKey(start)] = heuristic(start, end);
 
@@ -133,32 +128,22 @@ function findPath(start, end) {
       }
       return path;
     }
-
-    const neighbors = [
+    [
       { x: current.x + 1, y: current.y },
       { x: current.x - 1, y: current.y },
       { x: current.x, y: current.y + 1 },
       { x: current.x, y: current.y - 1 }
-    ];
-
-    for (const neighbor of neighbors) {
-      if (
-        neighbor.x < 0 || neighbor.x >= cols ||
-        neighbor.y < 0 || neighbor.y >= rows ||
-        maze[neighbor.y][neighbor.x] === 1
-      ) continue;
-
+    ].forEach(neighbor => {
+      if (neighbor.x < 0 || neighbor.x >= cols || neighbor.y < 0 || neighbor.y >= rows || maze[neighbor.y][neighbor.x] === 1) return;
       const tentativeG = gScore[nodeKey(current)] + 1;
       const key = nodeKey(neighbor);
       if (!(key in gScore) || tentativeG < gScore[key]) {
         cameFrom[key] = current;
         gScore[key] = tentativeG;
         fScore[key] = tentativeG + heuristic(neighbor, end);
-        if (!openSet.find(n => n.x === neighbor.x && n.y === neighbor.y)) {
-          openSet.push(neighbor);
-        }
+        if (!openSet.find(n => n.x === neighbor.x && n.y === neighbor.y)) openSet.push(neighbor);
       }
-    }
+    });
   }
   return [];
 }
@@ -293,6 +278,7 @@ function animate() {
   requestAnimationFrame(animate);
 }
 
+generateClassicMaze();
 placeFruit();
 animate();
 
