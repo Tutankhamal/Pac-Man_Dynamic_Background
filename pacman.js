@@ -8,9 +8,9 @@ const tileSize = 40;
 const cols = Math.floor(width / tileSize);
 const rows = Math.floor(height / tileSize);
 
+// Cores do labirinto
 const mazeColors = [
-  '#fb234e15', '#f8862215', '#f0ed2115',
-  '#47ef2115', '#23d6e315', '#2326e015', '#a221dd15'
+  '#fb234e15', '#f8862215', '#f0ed2115', '#47ef2115', '#23d6e315', '#2326e015', '#a221dd15'
 ];
 
 let maze = [];
@@ -46,6 +46,17 @@ function generateMaze() {
 }
 
 generateMaze();
+
+function placeFruit() {
+  while (true) {
+    const fx = Math.floor(Math.random() * cols);
+    const fy = Math.floor(Math.random() * rows);
+    if (maze[fy][fx] === 0) {
+      fruit = { x: fx, y: fy };
+      break;
+    }
+  }
+}
 
 const mouse = { x: Math.floor(cols / 2), y: Math.floor(rows / 2) };
 
@@ -121,16 +132,13 @@ function findPath(start, end) {
 
 function updatePacman() {
   if (!pacman.moving) {
-    const target = { x: mouse.x, y: mouse.y };
-    if (pacman.path.length === 0 || Math.random() < 0.02) {
-      pacman.path = findPath({ x: Math.round(pacman.px), y: Math.round(pacman.py) }, target);
-    }
+    if (!fruit) placeFruit();
+    const target = { x: fruit.x, y: fruit.y };
+    pacman.path = findPath({ x: Math.round(pacman.px), y: Math.round(pacman.py) }, target);
+    
     if (pacman.path.length > 0) {
       pacman.target = pacman.path.shift();
       pacman.moving = true;
-      pacman.direction = pacman.target.x > pacman.px ? 'right' : 
-                         pacman.target.x < pacman.px ? 'left' :
-                         pacman.target.y > pacman.py ? 'down' : 'up';
     }
   }
 
@@ -155,24 +163,29 @@ function updatePacman() {
   pacman.angle += 0.2;
 }
 
-function drawMaze() {
-  for (let y = 0; y < rows; y++) {
-    for (let x = 0; x < cols; x++) {
-      if (maze[y][x] === 1) {
-        ctx.fillStyle = mazeColor;
-        ctx.fillRect(x * tileSize, y * tileSize, tileSize, tileSize);
-      }
-    }
-  }
+function drawFruit() {
+  if (!fruit) return;
+  ctx.beginPath();
+  ctx.arc(fruit.x * tileSize + tileSize / 2, fruit.y * tileSize + tileSize / 2, tileSize / 4, 0, Math.PI * 2);
+  ctx.fillStyle = 'red';
+  ctx.shadowColor = 'red';
+  ctx.shadowBlur = 10;
+  ctx.fill();
 }
 
 function drawPacman() {
   const cx = pacman.px * tileSize + tileSize / 2;
   const cy = pacman.py * tileSize + tileSize / 2;
+  const r = tileSize / 2 - 4;
+  const mouth = Math.abs(Math.sin(pacman.angle)) * Math.PI / 5;
+
+  ctx.save();
+  ctx.translate(cx, cy);
   ctx.beginPath();
-  ctx.arc(cx, cy, tileSize / 2, Math.PI / 4, 2 * Math.PI - Math.PI / 4);
+  ctx.arc(0, 0, r, mouth, 2 * Math.PI - mouth);
   ctx.fillStyle = 'yellow';
   ctx.fill();
+  ctx.restore();
 }
 
 function animate() {
@@ -180,6 +193,7 @@ function animate() {
   drawMaze();
   updatePacman();
   drawPacman();
+  drawFruit();
   requestAnimationFrame(animate);
 }
 
