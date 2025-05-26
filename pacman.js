@@ -4,9 +4,7 @@ const ctx = canvas.getContext('2d');
 let width = canvas.width = window.innerWidth;
 let height = canvas.height = window.innerHeight;
 
-// Diminuído de 40 para 20 para melhorar layout em dispositivos móveis
-const tileSize = 20;
-
+const tileSize = 40 * 0.85;  // Tamanho dos tiles reduzido em 15%
 const cols = Math.floor(width / tileSize);
 const rows = Math.floor(height / tileSize);
 const halfCols = Math.floor(cols / 2);
@@ -334,31 +332,48 @@ function hslToHexWithAlpha(hsl, alphaHex) {
   return `#${r}${g}${b}${alphaHex}`;
 }
 
-function animate() {
-  ctx.clearRect(0, 0, width, height);
-  particles.forEach(p => { p.update(); p.draw(); });
-  drawMaze();
-  updatePacman();
-  drawPacman();
-  drawFruit();
-  requestAnimationFrame(animate);
-}
-
-function placeFruit() {
-  while (true) {
-    const fx = Math.floor(Math.random() * cols);
-    const fy = Math.floor(Math.random() * rows);
-    if (maze[fy][fx] === 0 && (fx !== pacman.x || fy !== pacman.y)) {
-      fruit = { x: fx, y: fy };
-      break;
+function spawnFruit() {
+  if (fruit) return;
+  const emptyTiles = [];
+  for (let y = 0; y < rows; y++) {
+    for (let x = 0; x < cols; x++) {
+      if (maze[y][x] === 0 && !(x === pacman.x && y === pacman.y)) {
+        emptyTiles.push({ x, y });
+      }
     }
+  }
+  if (emptyTiles.length > 0) {
+    fruit = emptyTiles[Math.floor(Math.random() * emptyTiles.length)];
   }
 }
 
-placeFruit();
-animate();
+function animate() {
+  ctx.clearRect(0, 0, width, height);
+
+  particles.forEach(p => {
+    p.update();
+    p.draw();
+  });
+
+  drawMaze();
+
+  updatePacman();
+  drawPacman();
+
+  drawFruit();
+
+  spawnFruit();
+
+  if (rgbMode && !fruit) {
+    rgbMode = false;
+  }
+
+  requestAnimationFrame(animate);
+}
 
 window.addEventListener('resize', () => {
   width = canvas.width = window.innerWidth;
   height = canvas.height = window.innerHeight;
 });
+
+animate();
