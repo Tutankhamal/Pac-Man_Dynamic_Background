@@ -4,7 +4,9 @@ const ctx = canvas.getContext('2d');
 let width = canvas.width = window.innerWidth;
 let height = canvas.height = window.innerHeight;
 
-const tileSize = 40;
+// Diminuído de 40 para 20 para melhorar layout em dispositivos móveis
+const tileSize = 20;
+
 const cols = Math.floor(width / tileSize);
 const rows = Math.floor(height / tileSize);
 const halfCols = Math.floor(cols / 2);
