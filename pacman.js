@@ -4,17 +4,15 @@ const ctx = canvas.getContext('2d');
 let width = canvas.width = window.innerWidth;
 let height = canvas.height = window.innerHeight;
 
-const tileSize = 40 * 0.85;  // Tamanho dos tiles reduzido em 15%
-const cols = Math.floor(width / tileSize);
-const rows = Math.floor(height / tileSize);
-const halfCols = Math.floor(cols / 2);
+let baseTileSize = 40;
+let tileSize = baseTileSize * 0.85;  // valor inicial reduzido
 
+let cols, rows, halfCols;
+let maze = [];
 const mazeColors = [
   '#fb234e15', '#f8862215', '#f0ed2115',
   '#47ef2115', '#23d6e315', '#2326e015', '#a221dd15'
 ];
-
-let maze = [];
 let baseMazeColor = mazeColors[Math.floor(Math.random() * mazeColors.length)];
 let mazeColor = baseMazeColor;
 let rgbMode = false;
@@ -98,9 +96,7 @@ function addExtraOpenings(chance = 0.1) {
   }
 }
 
-generateClassicMaze();
-
-const mouse = { x: Math.floor(cols / 2), y: Math.floor(rows / 2) };
+const mouse = { x: 0, y: 0 };
 
 document.addEventListener('mousemove', e => {
   mouse.x = Math.min(cols - 1, Math.max(0, Math.floor(e.clientX / tileSize)));
@@ -149,7 +145,6 @@ class Particle {
 }
 
 let particles = [];
-for (let i = 0; i < 100; i++) particles.push(new Particle());
 
 const pacman = {
   x: 1, y: 1, px: 1, py: 1,
@@ -347,33 +342,48 @@ function spawnFruit() {
   }
 }
 
+function resizeCanvasAndMaze() {
+  width = canvas.width = window.innerWidth;
+  height = canvas.height = window.innerHeight;
+
+  // Ajusta o tamanho do tile de acordo com a largura da janela para balancear desempenho e qualidade
+  if (width >= 1600) {
+    tileSize = baseTileSize;     // 100% para telas grandes
+  } else {
+    tileSize = baseTileSize * 0.85; // 85% para telas médias/pequenas
+  }
+
+  cols = Math.floor(width / tileSize);
+  rows = Math.floor(height / tileSize);
+  halfCols = Math.floor(cols / 2);
+
+  generateClassicMaze();
+
+  particles = [];
+  for (let i = 0; i < 60; i++) particles.push(new Particle());
+}
+
 function animate() {
   ctx.clearRect(0, 0, width, height);
 
-  particles.forEach(p => {
+  for (const p of particles) {
     p.update();
     p.draw();
-  });
+  }
 
   drawMaze();
-
   updatePacman();
   drawPacman();
-
   drawFruit();
 
-  spawnFruit();
-
-  if (rgbMode && !fruit) {
-    rgbMode = false;
-  }
+  if (!fruit) spawnFruit();
 
   requestAnimationFrame(animate);
 }
 
 window.addEventListener('resize', () => {
-  width = canvas.width = window.innerWidth;
-  height = canvas.height = window.innerHeight;
+  resizeCanvasAndMaze();
 });
 
+resizeCanvasAndMaze();
 animate();
