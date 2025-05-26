@@ -1,11 +1,10 @@
-
+>
 const canvas = document.getElementById('retro-bg');
 const ctx = canvas.getContext('2d');
 
 let width = canvas.width = window.innerWidth;
 let height = canvas.height = window.innerHeight;
 
-// Ajusta dinamicamente o tamanho dos blocos
 let tileSize = Math.floor(Math.max(20, Math.min(60, Math.min(width, height) / 20)));
 let cols = Math.floor(width / tileSize);
 let rows = Math.floor(height / tileSize);
@@ -65,21 +64,13 @@ function generateClassicMaze() {
 
   addExtraOpenings(0.08);
 
-  // Garante abertura central horizontal
+  // Caminho horizontal central
   const midY = Math.floor(rows / 2);
   for (let x = 0; x < cols; x++) {
     if (maze[midY][x] === 1 && x % 2 === 1) maze[midY][x] = 0;
   }
 
-  // Remove parede central 2x2 se houver
-  const cx = Math.floor(cols / 2);
-  const cy = Math.floor(rows / 2);
-  for (let y = cy - 1; y <= cy; y++) {
-    for (let x = cx - 1; x <= cx; x++) {
-      if (maze[y] && maze[y][x] !== undefined) maze[y][x] = 0;
-    }
-  }
-
+  // Entrada garantida
   maze[1][1] = 0;
   maze[2][1] = 0;
   maze[1][2] = 0;
@@ -291,29 +282,6 @@ function drawMaze() {
   }
 }
 
-function placeFruit() {
-  while (true) {
-    const x = Math.floor(Math.random() * cols);
-    const y = Math.floor(Math.random() * rows);
-    if (maze[y][x] === 0 && (x !== pacman.x || y !== pacman.y)) {
-      fruit = { x, y };
-      break;
-    }
-  }
-}
-
-function drawFruit() {
-  if (!fruit) return;
-  const cx = fruit.x * tileSize + tileSize / 2;
-  const cy = fruit.y * tileSize + tileSize / 2;
-  ctx.beginPath();
-  ctx.arc(cx, cy, tileSize / 4, 0, Math.PI * 2);
-  ctx.fillStyle = 'red';
-  ctx.shadowColor = 'red';
-  ctx.shadowBlur = 10;
-  ctx.fill();
-}
-
 function hslToHexWithAlpha(hsl, alphaHex) {
   const temp = document.createElement('div');
   temp.style.color = hsl;
@@ -331,12 +299,9 @@ function animate() {
   drawMaze();
   updatePacman();
   drawPacman();
-  drawFruit();
   requestAnimationFrame(animate);
 }
 
-placeFruit();
 animate();
 
 window.addEventListener('resize', () => location.reload());
-
