@@ -1,4 +1,3 @@
-
 const canvas = document.getElementById('retro-bg');
 const ctx = canvas.getContext('2d');
 
@@ -43,9 +42,7 @@ function generateClassicMaze() {
     visited[y][x] = true;
     leftMaze[y][x] = 0;
 
-    const directions = shuffle([
-      [0, -2], [0, 2], [-2, 0], [2, 0]
-    ]);
+    const directions = shuffle([[0, -2], [0, 2], [-2, 0], [2, 0]]);
 
     for (const [dx, dy] of directions) {
       const nx = x + dx;
@@ -63,7 +60,10 @@ function generateClassicMaze() {
   maze = Array.from({ length: rows }, (_, y) => {
     const mirroredRow = [...leftMaze[y]];
     const rightHalf = [...mirroredRow].reverse();
-    const row = (cols % 2 === 0) ? mirroredRow.concat(rightHalf) : mirroredRow.concat([0], rightHalf);
+    const row = (cols % 2 === 0)
+      ? mirroredRow.concat(rightHalf)
+      : mirroredRow.concat([0], rightHalf);
+
     const middleCol = Math.floor(cols / 2);
     const middleRow = Math.floor(rows / 2);
     const corridorSize = 4;
@@ -80,6 +80,7 @@ function generateClassicMaze() {
   });
 
   addExtraOpenings(0.08);
+
   maze[1][1] = 0;
   maze[1][2] = 0;
   maze[2][1] = 0;
@@ -101,20 +102,16 @@ generateClassicMaze();
 
 const mouse = { x: Math.floor(cols / 2), y: Math.floor(rows / 2) };
 
-function updateMousePosition(clientX, clientY) {
-  mouse.x = Math.min(cols - 1, Math.max(0, Math.floor(clientX / tileSize)));
-  mouse.y = Math.min(rows - 1, Math.max(0, Math.floor(clientY / tileSize)));
-}
-
 document.addEventListener('mousemove', e => {
-  updateMousePosition(e.clientX, e.clientY);
+  mouse.x = Math.min(cols - 1, Math.max(0, Math.floor(e.clientX / tileSize)));
+  mouse.y = Math.min(rows - 1, Math.max(0, Math.floor(e.clientY / tileSize)));
 });
 
-document.addEventListener('touchmove', e => {
-  if (e.touches && e.touches.length > 0) {
-    updateMousePosition(e.touches[0].clientX, e.touches[0].clientY);
-  }
-}, { passive: true });
+document.addEventListener('touchstart', e => {
+  const touch = e.touches[0];
+  mouse.x = Math.floor(touch.clientX / tileSize);
+  mouse.y = Math.floor(touch.clientY / tileSize);
+});
 
 class Particle {
   constructor() { this.reset(); }
@@ -158,7 +155,8 @@ const pacman = {
   x: 1, y: 1, px: 1, py: 1,
   angle: 0, direction: 'right',
   path: [], speed: 0.07,
-  moving: false, target: null
+  moving: false, target: null,
+  lastGoal: { x: 1, y: 1 }
 };
 
 function heuristic(a, b) {
@@ -179,10 +177,10 @@ function findPath(start, end) {
     const current = openSet.shift();
     if (current.x === end.x && current.y === end.y) {
       const path = [];
-      let temp = nodeKey(current);
-      while (temp in cameFrom) {
-        path.unshift(cameFrom[temp]);
-        temp = nodeKey(cameFrom[temp]);
+      let temp = current;
+      while (temp && nodeKey(temp) !== nodeKey(start)) {
+        path.unshift(temp);
+        temp = cameFrom[nodeKey(temp)];
       }
       return path;
     }
@@ -216,15 +214,69 @@ function findPath(start, end) {
   return [];
 }
 
-function placeFruit() {
-  while (true) {
-    const fx = Math.floor(Math.random() * cols);
-    const fy = Math.floor(Math.random() * rows);
-    if (maze[fy][fx] === 0 && (fx !== pacman.x || fy !== pacman.y)) {
-      fruit = { x: fx, y: fy };
-      break;
+function updatePacman() {
+  const target = { x: mouse.x, y: mouse.y };
+
+  if (!pacman.moving && (target.x !== pacman.lastGoal.x || target.y !== pacman.lastGoal.y)) {
+    pacman.path = findPath({ x: Math.round(pacman.px), y: Math.round(pacman.py) }, target);
+    pacman.lastGoal = { ...target };
+  }
+
+  if (!pacman.moving && pacman.path.length > 0) {
+    pacman.target = pacman.path.shift();
+    pacman.moving = true;
+    if (pacman.target.x > pacman.px) pacman.direction = 'right';
+    else if (pacman.target.x < pacman.px) pacman.direction = 'left';
+    else if (pacman.target.y > pacman.py) pacman.direction = 'down';
+    else if (pacman.target.y < pacman.py) pacman.direction = 'up';
+  }
+
+  if (pacman.moving && pacman.target) {
+    const dx = pacman.target.x - pacman.px;
+    const dy = pacman.target.y - pacman.py;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+    if (dist < pacman.speed) {
+      pacman.px = pacman.target.x;
+      pacman.py = pacman.target.y;
+      pacman.x = pacman.target.x;
+      pacman.y = pacman.target.y;
+      pacman.moving = false;
+      pacman.target = null;
+      if (fruit && pacman.x === fruit.x && pacman.y === fruit.y) {
+        fruit = null;
+        rgbMode = true;
+      }
+    } else {
+      pacman.px += (dx / dist) * pacman.speed;
+      pacman.py += (dy / dist) * pacman.speed;
     }
   }
+
+  pacman.angle += 0.2;
+}
+
+function drawPacman() {
+  const cx = pacman.px * tileSize + tileSize / 2;
+  const cy = pacman.py * tileSize + tileSize / 2;
+  const r = tileSize / 2 - 4;
+  const mouth = Math.abs(Math.sin(pacman.angle)) * Math.PI / 5;
+  let rotation = 0;
+  if (pacman.direction === 'right') rotation = 0;
+  else if (pacman.direction === 'left') rotation = Math.PI;
+  else if (pacman.direction === 'up') rotation = -Math.PI / 2;
+  else if (pacman.direction === 'down') rotation = Math.PI / 2;
+  ctx.save();
+  ctx.translate(cx, cy);
+  ctx.rotate(rotation);
+  ctx.beginPath();
+  ctx.moveTo(0, 0);
+  ctx.arc(0, 0, r, mouth, 2 * Math.PI - mouth);
+  ctx.lineTo(0, 0);
+  ctx.fillStyle = '#d4c05a';
+  ctx.shadowColor = '#d4c05a';
+  ctx.shadowBlur = 8;
+  ctx.fill();
+  ctx.restore();
 }
 
 function drawFruit() {
@@ -263,79 +315,6 @@ function drawMaze() {
   }
 }
 
-function updatePacman() {
-  if (!pacman.moving && (pacman.path.length === 0 || Math.random() < 0.02)) {
-    pacman.path = findPath({ x: Math.round(pacman.px), y: Math.round(pacman.py) }, { x: mouse.x, y: mouse.y });
-  }
-
-  if (!pacman.moving && pacman.path.length > 0) {
-    pacman.target = pacman.path.shift();
-    pacman.moving = true;
-    if (pacman.target.x > pacman.px) pacman.direction = 'right';
-    else if (pacman.target.x < pacman.px) pacman.direction = 'left';
-    else if (pacman.target.y > pacman.py) pacman.direction = 'down';
-    else if (pacman.target.y < pacman.py) pacman.direction = 'up';
-  }
-
-  if (pacman.moving && pacman.target) {
-    const dx = pacman.target.x - pacman.px;
-    const dy = pacman.target.y - pacman.py;
-    const dist = Math.sqrt(dx * dx + dy * dy);
-
-    if (dist < 0.01) {
-      pacman.px = pacman.target.x;
-      pacman.py = pacman.target.y;
-      pacman.x = pacman.target.x;
-      pacman.y = pacman.target.y;
-
-      if (fruit && pacman.x === fruit.x && pacman.y === fruit.y) {
-        fruit = null;
-        rgbMode = true;
-      }
-
-      if (pacman.path.length > 0) {
-        pacman.target = pacman.path.shift();
-        if (pacman.target.x > pacman.px) pacman.direction = 'right';
-        else if (pacman.target.x < pacman.px) pacman.direction = 'left';
-        else if (pacman.target.y > pacman.py) pacman.direction = 'down';
-        else if (pacman.target.y < pacman.py) pacman.direction = 'up';
-      } else {
-        pacman.moving = false;
-        pacman.target = null;
-      }
-    } else {
-      pacman.px += (dx / dist) * pacman.speed;
-      pacman.py += (dy / dist) * pacman.speed;
-    }
-  }
-
-  pacman.angle += 0.2;
-}
-
-function drawPacman() {
-  const cx = pacman.px * tileSize + tileSize / 2;
-  const cy = pacman.py * tileSize + tileSize / 2;
-  const r = tileSize / 2 - 4;
-  const mouth = Math.abs(Math.sin(pacman.angle)) * Math.PI / 5;
-  let rotation = 0;
-  if (pacman.direction === 'right') rotation = 0;
-  else if (pacman.direction === 'left') rotation = Math.PI;
-  else if (pacman.direction === 'up') rotation = -Math.PI / 2;
-  else if (pacman.direction === 'down') rotation = Math.PI / 2;
-  ctx.save();
-  ctx.translate(cx, cy);
-  ctx.rotate(rotation);
-  ctx.beginPath();
-  ctx.moveTo(0, 0);
-  ctx.arc(0, 0, r, mouth, 2 * Math.PI - mouth);
-  ctx.lineTo(0, 0);
-  ctx.fillStyle = '#d4c05a';
-  ctx.shadowColor = '#d4c05a';
-  ctx.shadowBlur = 8;
-  ctx.fill();
-  ctx.restore();
-}
-
 function hslToHexWithAlpha(hsl, alphaHex) {
   const temp = document.createElement('div');
   temp.style.color = hsl;
@@ -355,18 +334,23 @@ function hslToHexWithAlpha(hsl, alphaHex) {
 
 function animate() {
   ctx.clearRect(0, 0, width, height);
-
-  particles.forEach(p => {
-    p.update();
-    p.draw();
-  });
-
+  particles.forEach(p => { p.update(); p.draw(); });
   drawMaze();
   updatePacman();
   drawPacman();
   drawFruit();
-
   requestAnimationFrame(animate);
+}
+
+function placeFruit() {
+  while (true) {
+    const fx = Math.floor(Math.random() * cols);
+    const fy = Math.floor(Math.random() * rows);
+    if (maze[fy][fx] === 0 && (fx !== pacman.x || fy !== pacman.y)) {
+      fruit = { x: fx, y: fy };
+      break;
+    }
+  }
 }
 
 placeFruit();
@@ -376,4 +360,3 @@ window.addEventListener('resize', () => {
   width = canvas.width = window.innerWidth;
   height = canvas.height = window.innerHeight;
 });
-
