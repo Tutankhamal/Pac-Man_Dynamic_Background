@@ -5,8 +5,7 @@ let width = canvas.width = window.innerWidth;
 let height = canvas.height = window.innerHeight;
 
 let baseTileSize = 40;
-let tileSize = baseTileSize * 0.85;  // valor inicial reduzido
-
+let tileSize;
 let cols, rows, halfCols;
 let maze = [];
 const mazeColors = [
@@ -17,8 +16,9 @@ let baseMazeColor = mazeColors[Math.floor(Math.random() * mazeColors.length)];
 let mazeColor = baseMazeColor;
 let rgbMode = false;
 let rgbHue = 0;
-
 let fruit = null;
+
+const isMobile = /Android|iPhone|iPad|iPod|Opera Mini|IEMobile|WPDesktop/i.test(navigator.userAgent);
 
 function shuffle(array) {
   for (let i = array.length - 1; i > 0; i--) {
@@ -39,13 +39,10 @@ function generateClassicMaze() {
   function carveMaze(x, y) {
     visited[y][x] = true;
     leftMaze[y][x] = 0;
-
     const directions = shuffle([[0, -2], [0, 2], [-2, 0], [2, 0]]);
-
     for (const [dx, dy] of directions) {
       const nx = x + dx;
       const ny = y + dy;
-
       if (isValid(nx, ny) && !visited[ny][nx]) {
         leftMaze[y + dy / 2][x + dx / 2] = 0;
         carveMaze(nx, ny);
@@ -61,7 +58,6 @@ function generateClassicMaze() {
     const row = (cols % 2 === 0)
       ? mirroredRow.concat(rightHalf)
       : mirroredRow.concat([0], rightHalf);
-
     const middleCol = Math.floor(cols / 2);
     const middleRow = Math.floor(rows / 2);
     const corridorSize = 4;
@@ -78,10 +74,7 @@ function generateClassicMaze() {
   });
 
   addExtraOpenings(0.08);
-
-  maze[1][1] = 0;
-  maze[1][2] = 0;
-  maze[2][1] = 0;
+  maze[1][1] = maze[1][2] = maze[2][1] = 0;
 }
 
 function addExtraOpenings(chance = 0.1) {
@@ -154,18 +147,15 @@ const pacman = {
   lastGoal: { x: 1, y: 1 }
 };
 
-function heuristic(a, b) {
-  return Math.abs(a.x - b.x) + Math.abs(a.y - b.y);
-}
-
+let lastPathCheck = 0;
 function findPath(start, end) {
   const openSet = [start];
   const cameFrom = {};
   const gScore = {};
   const fScore = {};
-  function nodeKey(n) { return `${n.x},${n.y}`; }
+  const nodeKey = n => `${n.x},${n.y}`;
   gScore[nodeKey(start)] = 0;
-  fScore[nodeKey(start)] = heuristic(start, end);
+  fScore[nodeKey(start)] = Math.abs(start.x - end.x) + Math.abs(start.y - end.y);
 
   while (openSet.length > 0) {
     openSet.sort((a, b) => fScore[nodeKey(a)] - fScore[nodeKey(b)]);
@@ -199,7 +189,7 @@ function findPath(start, end) {
       if (!(key in gScore) || tentativeG < gScore[key]) {
         cameFrom[key] = current;
         gScore[key] = tentativeG;
-        fScore[key] = tentativeG + heuristic(neighbor, end);
+        fScore[key] = tentativeG + Math.abs(neighbor.x - end.x) + Math.abs(neighbor.y - end.y);
         if (!openSet.find(n => n.x === neighbor.x && n.y === neighbor.y)) {
           openSet.push(neighbor);
         }
@@ -210,20 +200,26 @@ function findPath(start, end) {
 }
 
 function updatePacman() {
+  const now = performance.now();
   const target = { x: mouse.x, y: mouse.y };
 
   if (!pacman.moving && (target.x !== pacman.lastGoal.x || target.y !== pacman.lastGoal.y)) {
-    pacman.path = findPath({ x: Math.round(pacman.px), y: Math.round(pacman.py) }, target);
-    pacman.lastGoal = { ...target };
+    if (now - lastPathCheck > 100) {
+      pacman.path = findPath({ x: Math.round(pacman.px), y: Math.round(pacman.py) }, target);
+      pacman.lastGoal = { ...target };
+      lastPathCheck = now;
+    }
   }
 
   if (!pacman.moving && pacman.path.length > 0) {
     pacman.target = pacman.path.shift();
     pacman.moving = true;
-    if (pacman.target.x > pacman.px) pacman.direction = 'right';
-    else if (pacman.target.x < pacman.px) pacman.direction = 'left';
-    else if (pacman.target.y > pacman.py) pacman.direction = 'down';
-    else if (pacman.target.y < pacman.py) pacman.direction = 'up';
+    const dx = pacman.target.x - pacman.px;
+    const dy = pacman.target.y - pacman.py;
+    if (dx > 0) pacman.direction = 'right';
+    else if (dx < 0) pacman.direction = 'left';
+    else if (dy > 0) pacman.direction = 'down';
+    else if (dy < 0) pacman.direction = 'up';
   }
 
   if (pacman.moving && pacman.target) {
@@ -316,14 +312,11 @@ function hslToHexWithAlpha(hsl, alphaHex) {
   document.body.appendChild(temp);
   const rgb = window.getComputedStyle(temp).color;
   document.body.removeChild(temp);
-
   const rgbParts = rgb.match(/\d+/g);
   if (!rgbParts) return '#00000000';
-
   let r = parseInt(rgbParts[0]).toString(16).padStart(2, '0');
   let g = parseInt(rgbParts[1]).toString(16).padStart(2, '0');
   let b = parseInt(rgbParts[2]).toString(16).padStart(2, '0');
-
   return `#${r}${g}${b}${alphaHex}`;
 }
 
@@ -346,12 +339,9 @@ function resizeCanvasAndMaze() {
   width = canvas.width = window.innerWidth;
   height = canvas.height = window.innerHeight;
 
-  // Ajusta o tamanho do tile de acordo com a largura da janela para balancear desempenho e qualidade
-  if (width >= 1600) {
-    tileSize = baseTileSize;     // 100% para telas grandes
-  } else {
-    tileSize = baseTileSize * 0.85; // 85% para telas médias/pequenas
-  }
+  tileSize = isMobile
+    ? baseTileSize * 0.85
+    : baseTileSize * 1.25;
 
   cols = Math.floor(width / tileSize);
   rows = Math.floor(height / tileSize);
@@ -359,30 +349,34 @@ function resizeCanvasAndMaze() {
 
   generateClassicMaze();
 
+  const particleCount = isMobile ? 60 : 45;
   particles = [];
-  for (let i = 0; i < 60; i++) particles.push(new Particle());
+  for (let i = 0; i < particleCount; i++) particles.push(new Particle());
 }
 
 function animate() {
   ctx.clearRect(0, 0, width, height);
-
   for (const p of particles) {
     p.update();
     p.draw();
   }
-
   drawMaze();
   updatePacman();
   drawPacman();
   drawFruit();
-
   if (!fruit) spawnFruit();
-
   requestAnimationFrame(animate);
 }
 
+let resizePending = false;
 window.addEventListener('resize', () => {
-  resizeCanvasAndMaze();
+  if (!resizePending) {
+    resizePending = true;
+    requestAnimationFrame(() => {
+      resizeCanvasAndMaze();
+      resizePending = false;
+    });
+  }
 });
 
 resizeCanvasAndMaze();
