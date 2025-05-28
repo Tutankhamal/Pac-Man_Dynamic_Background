@@ -18,15 +18,18 @@ let pacman = {
 let mousePos = { x: 0, y: 0 };
 let lastMoveTime = 0;
 
+function isMobileDevice() {
+    return /Mobi|Android/i.test(navigator.userAgent);
+}
+
 function resizeCanvas() {
     canvas.width = window.innerWidth;
     canvas.height = window.innerHeight;
 
-    // Aumentar tileSize em 25% apenas em dispositivos não móveis
-    const isMobile = /Mobi|Android/i.test(navigator.userAgent);
-    tileSize = Math.floor(isMobile ? window.innerWidth / 30 : window.innerWidth / 37.5);
-    rows = Math.floor(canvas.height / tileSize);
+    const baseCols = isMobileDevice() ? 30 : 30 * 0.75; // 25% tiles a menos no desktop
+    tileSize = Math.floor(window.innerWidth / baseCols);
     cols = Math.floor(canvas.width / tileSize);
+    rows = Math.floor(canvas.height / tileSize);
 
     pacman.size = tileSize * 0.6;
 
@@ -41,13 +44,11 @@ function generateMaze() {
     for (let y = 0; y < rows; y++) {
         maze[y] = [];
         for (let x = 0; x < cols; x++) {
-            // Gerar paredes nas bordas e aleatoriamente dentro
             if (y === 0 || y === rows - 1 || x === 0 || x === cols - 1) {
                 maze[y][x] = 1;
             } else {
                 let isWall = Math.random() < 0.22 ? 1 : 0;
 
-                // Evitar paredes centrais para travessia lateral
                 const centralCol = Math.floor(cols / 2);
                 const middleRows = [Math.floor(rows / 2) - 1, Math.floor(rows / 2), Math.floor(rows / 2) + 1];
                 if (
@@ -64,7 +65,6 @@ function generateMaze() {
 }
 
 function placePacman() {
-    // Encontrar uma posição livre no topo
     for (let y = 1; y < rows - 1; y++) {
         for (let x = 1; x < cols - 1; x++) {
             if (maze[y][x] === 0) {
@@ -176,7 +176,7 @@ function drawPacman() {
 }
 
 function generateParticles() {
-    const baseCount = Math.floor((canvas.width * canvas.height) / 12000); // mais partículas
+    const baseCount = Math.floor((canvas.width * canvas.height) / 10000); // mais partículas sem exagero
     particles = [];
 
     for (let i = 0; i < baseCount; i++) {
@@ -184,20 +184,19 @@ function generateParticles() {
             x: Math.random() * canvas.width,
             y: Math.random() * canvas.height,
             radius: Math.random() * 2 + 0.5,
-            dx: Math.random() * 0.3 - 0.15,
-            dy: Math.random() * 0.3 - 0.15,
+            dx: Math.random() * 0.4 - 0.2,
+            dy: Math.random() * 0.4 - 0.2,
         });
     }
 }
 
 function drawParticles() {
-    ctx.fillStyle = "rgba(255, 255, 255, 0.5)";
+    ctx.fillStyle = "rgba(255, 255, 255, 0.4)";
     for (let p of particles) {
         ctx.beginPath();
         ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
         ctx.fill();
 
-        // Atração sutil ao mouse
         let dx = mousePos.x - p.x;
         let dy = mousePos.y - p.y;
         let dist = Math.sqrt(dx * dx + dy * dy);
