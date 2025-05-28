@@ -103,25 +103,29 @@ document.addEventListener('touchstart', e => {
 });
 
 class Particle {
-  constructor() { this.reset(); }
+  constructor() {
+    this.reset();
+  }
   reset() {
     this.x = Math.random() * width;
     this.y = Math.random() * height;
     this.size = Math.random() * 2 + 1;
     this.baseX = this.x;
     this.baseY = this.y;
-    const colors = ['#3d3558', '#2e2a49', '#4a4367'];
-    this.color = colors[Math.floor(Math.random() * colors.length)];
+    this.hue = Math.floor(Math.random() * 360);
+    this.hueSpeed = Math.random() * 0.5 + 0.1;
   }
   draw() {
+    const color = `hsl(${this.hue}, 100%, 60%)`;
     ctx.beginPath();
     ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
-    ctx.fillStyle = this.color;
-    ctx.shadowColor = this.color;
+    ctx.fillStyle = color;
+    ctx.shadowColor = color;
     ctx.shadowBlur = 5;
     ctx.fill();
   }
   update() {
+    this.hue = (this.hue + this.hueSpeed) % 360;
     const dx = this.x - mouse.x * tileSize;
     const dy = this.y - mouse.y * tileSize;
     const dist = Math.sqrt(dx * dx + dy * dy);
@@ -339,9 +343,7 @@ function resizeCanvasAndMaze() {
   width = canvas.width = window.innerWidth;
   height = canvas.height = window.innerHeight;
 
-  tileSize = isMobile
-    ? baseTileSize * 0.85
-    : baseTileSize * 1.25;
+  tileSize = isMobile ? baseTileSize * 0.85 : baseTileSize * 1.25;
 
   cols = Math.floor(width / tileSize);
   rows = Math.floor(height / tileSize);
