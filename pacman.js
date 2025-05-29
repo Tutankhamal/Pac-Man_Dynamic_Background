@@ -302,12 +302,6 @@ function drawPacman() {
   ctx.closePath();
   ctx.fill();
 
-  // Olho
-  ctx.fillStyle = 'black';
-  ctx.beginPath();
-  ctx.arc(tileSize / 8, -tileSize / 8, tileSize / 10, 0, 2 * Math.PI);
-  ctx.fill();
-
   ctx.restore();
 }
 
