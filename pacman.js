@@ -254,11 +254,8 @@ function updatePacman() {
       pacman.target = null;
 if (fruit && pacman.x === fruit.x && pacman.y === fruit.y) {
   fruit = null;
-  rgbMode = true;
-  setTimeout(() => {
-    rgbMode = false;
-    spawnFruit();
-  }, 4000); // respawna fruta após 4 segundos
+  rgbMode = true; // Ativa o modo RGB
+  setTimeout(spawnFruit, 4000); // Apenas respawna a fruta, sem desativar o RGB
 }
     } else {
       pacman.px += (dx / dist) * pacman.speed;
@@ -330,6 +327,7 @@ function updateColors() {
     mazeColor = baseMazeColor;
   }
 }
+
 
 function spawnFruit() {
   while (true) {
