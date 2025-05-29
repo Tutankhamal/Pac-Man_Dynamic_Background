@@ -256,10 +256,11 @@ function updatePacman() {
       pacman.y = pacman.target.y;
       pacman.moving = false;
       pacman.target = null;
-      if (fruit && pacman.x === fruit.x && pacman.y === fruit.y) {
-        fruit = null;
-        rgbMode = true;
-      }
+if (fruit && pacman.x === fruit.x && pacman.y === fruit.y) {
+  fruit = null;
+  rgbMode = true;
+  setTimeout(placeFruit, 3000); // reaparece após 3 segundos
+}
     } else {
       pacman.px += (dx / dist) * pacman.speed;
       pacman.py += (dy / dist) * pacman.speed;
@@ -306,9 +307,9 @@ function drawFruit() {
   if (!fruit) return;
   const fx = fruit.x * tileSize + tileSize / 2;
   const fy = fruit.y * tileSize + tileSize / 2;
-  const radius = tileSize / 2.5;
+  const radius = tileSize / 7; // 50% menor
 
-  ctx.fillStyle = 'red';
+  ctx.fillStyle = 'yellow';
   ctx.beginPath();
   ctx.arc(fx, fy, radius, 0, Math.PI * 2);
   ctx.fill();
