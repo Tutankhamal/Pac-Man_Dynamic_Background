@@ -11,17 +11,14 @@ let tileSize;
 
 function calculateTileSize() {
   if (isMobile) {
-    return baseTileSize;
+    return baseTileSize * 0.85; // 15% menor em dispositivos móveis
   } else {
-    // Desktop
     if (width >= 1920) {
       return baseTileSize * 1.2; // 48
     } else if (width >= 1280 && width < 1920) {
-      // proporcional entre 40 e 48
       const ratio = (width - 1280) / (1920 - 1280);
       return baseTileSize + (baseTileSize * 0.2 * ratio);
     } else {
-      // largura menor que 1280px, usa tamanho base (40)
       return baseTileSize;
     }
   }
@@ -255,10 +252,14 @@ function updatePacman() {
       pacman.y = pacman.target.y;
       pacman.moving = false;
       pacman.target = null;
-      if (fruit && pacman.x === fruit.x && pacman.y === fruit.y) {
-        fruit = null;
-        rgbMode = true;
-      }
+if (fruit && pacman.x === fruit.x && pacman.y === fruit.y) {
+  fruit = null;
+  rgbMode = true;
+  setTimeout(() => {
+    rgbMode = false;
+    spawnFruit();
+  }, 4000); // respawna fruta após 4 segundos
+}
     } else {
       pacman.px += (dx / dist) * pacman.speed;
       pacman.py += (dy / dist) * pacman.speed;
