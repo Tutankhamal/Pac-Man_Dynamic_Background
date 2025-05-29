@@ -326,7 +326,7 @@ function drawFruit() {
 function updateColors() {
   if (rgbMode) {
     rgbHue = (rgbHue + 2) % 360;
-    mazeColor = `hsl(${rgbHue}, 100%, 20%)`;`; // Mais escuro e sem transparência
+    mazeColor = `hsl(${rgbHue}, 100%, 30%)`; // Mais escuro e sem transparência
   } else {
     mazeColor = baseMazeColor;
   }
