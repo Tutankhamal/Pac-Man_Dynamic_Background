@@ -28,8 +28,11 @@ let cols, rows, halfCols;
 let maze = [];
 
 const mazeColors = [
-  'rgba(251,35,78,0.15)', 'rgba(248,134,34,0.15)', 'rgba(240,237,33,0.15)',
-  'rgba(71,239,33,0.15)', 'rgba(35,214,227,0.15)', 'rgba(35,38,224,0.15)', 'rgba(162,33,221,0.15)'
+  '#112244',
+  '#223355',
+  '#2b2b66',
+  '#331144',
+  '#1e1e33',
 ];
 let baseMazeColor = mazeColors[Math.floor(Math.random() * mazeColors.length)];
 let mazeColor = baseMazeColor;
