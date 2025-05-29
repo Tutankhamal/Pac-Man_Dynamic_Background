@@ -269,10 +269,19 @@ if (fruit && pacman.x === fruit.x && pacman.y === fruit.y) {
 }
 
 function drawMaze() {
-  ctx.fillStyle = mazeColor;
   for (let y = 0; y < rows; y++) {
     for (let x = 0; x < cols; x++) {
       if (maze[y][x] === 1) {
+        if (!rgbMode) {
+          ctx.fillStyle = mazeColor;
+        } else {
+          // Hue restrito a vermelho (0-30) e roxo/rosa (300-360)
+          let baseHue = (rgbHue + (x + y) * 20) % 360;
+          // Mapear baseHue para faixa limitada:
+          // Se estiver entre 0-60, mantém (0-30 vermelho), senão 300-360 roxo/rosa
+          let hue = (baseHue < 60) ? baseHue / 2 : 300 + ((baseHue - 60) % 60);
+          ctx.fillStyle = `hsl(${hue}, 100%, 40%)`;
+        }
         ctx.fillRect(x * tileSize, y * tileSize, tileSize, tileSize);
       }
     }
@@ -311,16 +320,17 @@ function drawFruit() {
   if (!fruit) return;
   const fx = fruit.x * tileSize + tileSize / 2;
   const fy = fruit.y * tileSize + tileSize / 2;
-
-  ctx.save();
-  ctx.translate(fx, fy);
-
-  ctx.fillStyle = 'red';
+  ctx.fillStyle = rgbMode
+    ? (() => {
+        // Cor da fruta também variando só entre vermelho, roxo e rosa
+        let baseHue = (rgbHue + 180) % 360;
+        let hue = (baseHue < 60) ? baseHue / 2 : 300 + ((baseHue - 60) % 60);
+        return `hsl(${hue}, 100%, 60%)`;
+      })()
+    : 'red';
   ctx.beginPath();
-  ctx.arc(0, 0, tileSize / 3, 0, 2 * Math.PI);
+  ctx.arc(fx, fy, tileSize * 0.3, 0, Math.PI * 2);
   ctx.fill();
-
-  ctx.restore();
 }
 
 function updateColors() {
