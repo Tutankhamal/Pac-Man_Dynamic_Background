@@ -14,7 +14,7 @@ function calculateTileSize() {
     return baseTileSize * 0.85; // 15% menor em dispositivos móveis
   } else {
     if (width >= 1920) {
-      return baseTileSize * 1.2; // 48
+      return baseTileSize * 1.2; // 20% maior em desktops grandes
     } else if (width >= 1280 && width < 1920) {
       const ratio = (width - 1280) / (1920 - 1280);
       return baseTileSize + (baseTileSize * 0.2 * ratio);
@@ -28,17 +28,21 @@ let cols, rows, halfCols;
 let maze = [];
 
 const mazeColors = [
-  '#37002325', // roxo escuro
-  '#550f2d25', // vinho escuro
-  '#78143c25', // vermelho escuro puxado pro rosa
-  '#5a004625', // roxo avermelhado escuro
-  '#82234b25'  // rosa escuro puxado pro vinho
+  '#37002325', // roxo escuro + transparência 25 HEX (aprox 15% alfa)
+  '#550f2d25', // vinho escuro + transparência
+  '#78143c25', // vermelho escuro puxado pro rosa + transparência
+  '#5a004625', // roxo avermelhado escuro + transparência
+  '#82234b25'  // rosa escuro puxado pro vinho + transparência
 ];
+
+// Escolhe cor base do labirinto uma única vez
 let baseMazeColor = mazeColors[Math.floor(Math.random() * mazeColors.length)];
-let mazeColor = baseMazeColor;
+let mazeColor = baseMazeColor; // começa com base
 console.log("Base Maze Color:", baseMazeColor);
-let rgbMode = false;
+
+let rgbMode = false; // ativado só ao comer fruta
 let rgbHue = 0;
+
 let fruit = null;
 
 function shuffle(array) {
@@ -79,6 +83,7 @@ function generateClassicMaze() {
     const row = (cols % 2 === 0)
       ? mirroredRow.concat(rightHalf)
       : mirroredRow.concat([0], rightHalf);
+
     const middleCol = Math.floor(cols / 2);
     const middleRow = Math.floor(rows / 2);
     const corridorSize = 4;
@@ -137,7 +142,8 @@ class Particle {
     this.hueSpeed = Math.random() * 0.5 + 0.1;
   }
   draw() {
-    const color = `hsla(${this.hue}, 100%, 60%, 0.5)`; // 50% opacidade
+    // Opacidade já em 0.5 no hsla, reduzido conforme pedido
+    const color = `hsla(${this.hue}, 100%, 60%, 0.5)`;
     ctx.fillStyle = color;
     ctx.shadowColor = color;
     ctx.shadowBlur = 4;
@@ -171,6 +177,7 @@ const pacman = {
 };
 
 let lastPathCheck = 0;
+
 function findPath(start, end) {
   const openSet = [start];
   const cameFrom = {};
@@ -248,23 +255,28 @@ function updatePacman() {
   if (pacman.moving && pacman.target) {
     const dx = pacman.target.x - pacman.px;
     const dy = pacman.target.y - pacman.py;
-    const dist = Math.sqrt(dx * dx + dy * dy);
-    if (dist < pacman.speed) {
+
+    if (Math.abs(dx) < pacman.speed && Math.abs(dy) < pacman.speed) {
       pacman.px = pacman.target.x;
       pacman.py = pacman.target.y;
-      pacman.x = pacman.target.x;
-      pacman.y = pacman.target.y;
       pacman.moving = false;
       pacman.target = null;
-if (fruit && pacman.x === fruit.x && pacman.y === fruit.y) {
-  fruit = null;
-  rgbMode = true; // Ativa o modo RGB
-  setTimeout(spawnFruit, 4000); // Apenas respawna a fruta, sem desativar o RGB
-}
     } else {
-      pacman.px += (dx / dist) * pacman.speed;
-      pacman.py += (dy / dist) * pacman.speed;
+      pacman.px += dx * pacman.speed;
+      pacman.py += dy * pacman.speed;
     }
+  } else {
+    pacman.px = pacman.lastGoal.x;
+    pacman.py = pacman.lastGoal.y;
+  }
+
+  pacman.x = Math.floor(pacman.px);
+  pacman.y = Math.floor(pacman.py);
+
+  if (fruit && pacman.x === fruit.x && pacman.y === fruit.y) {
+    fruit = null;
+    rgbMode = true;  // ativa o modo rainbow só ao comer fruta
+    rgbHue = 0;
   }
 }
 
@@ -273,47 +285,19 @@ function drawMaze() {
     for (let x = 0; x < cols; x++) {
       if (maze[y][x] === 1) {
         if (!rgbMode) {
-          ctx.fillStyle = mazeColor;
+          ctx.fillStyle = baseMazeColor;
         } else {
-          // Hue restrito a vermelho (0-30) e roxo/rosa (300-360)
+          // cor em HSL tons mais escuros e saturação média
           let baseHue = (rgbHue + (x + y) * 20) % 360;
-          // Mapear baseHue para faixa limitada:
-          // Se estiver entre 0-60, mantém (0-30 vermelho), senão 300-360 roxo/rosa
           let hue = (baseHue < 60) ? baseHue / 2 : 300 + ((baseHue - 60) % 60);
-          ctx.fillStyle = `hsl(${hue}, 100%, 40%)`;
+          const saturation = 50; // 40-60%
+          const lightness = 30;  // 20-40%
+          ctx.fillStyle = `hsl(${hue}, ${saturation}%, ${lightness}%)`;
         }
         ctx.fillRect(x * tileSize, y * tileSize, tileSize, tileSize);
       }
     }
   }
-}
-
-function drawParticles() {
-  particles.forEach(p => {
-    p.update();
-    p.draw();
-  });
-}
-
-function drawPacman() {
-  const px = pacman.px * tileSize + tileSize / 2;
-  const py = pacman.py * tileSize + tileSize / 2;
-
-  ctx.save();
-  ctx.translate(px, py);
-
-  const angleMap = { right: 0, left: Math.PI, up: -Math.PI / 2, down: Math.PI / 2 };
-  ctx.rotate(angleMap[pacman.direction] || 0);
-
-  ctx.fillStyle = 'yellow';
-  ctx.beginPath();
-  const mouthAngle = Math.sin(performance.now() / 150) * 0.3 + 0.3;
-  ctx.moveTo(0, 0);
-  ctx.arc(0, 0, tileSize / 2.2, mouthAngle, 2 * Math.PI - mouthAngle);
-  ctx.closePath();
-  ctx.fill();
-
-  ctx.restore();
 }
 
 function drawFruit() {
@@ -322,10 +306,11 @@ function drawFruit() {
   const fy = fruit.y * tileSize + tileSize / 2;
   ctx.fillStyle = rgbMode
     ? (() => {
-        // Cor da fruta também variando só entre vermelho, roxo e rosa
         let baseHue = (rgbHue + 180) % 360;
         let hue = (baseHue < 60) ? baseHue / 2 : 300 + ((baseHue - 60) % 60);
-        return `hsl(${hue}, 100%, 60%)`;
+        const saturation = 50;
+        const lightness = 40;
+        return `hsl(${hue}, ${saturation}%, ${lightness}%)`;
       })()
     : 'red';
   ctx.beginPath();
@@ -333,27 +318,38 @@ function drawFruit() {
   ctx.fill();
 }
 
+function drawPacman() {
+  const px = pacman.px * tileSize + tileSize / 2;
+  const py = pacman.py * tileSize + tileSize / 2;
+  const mouthOpen = Math.abs(Math.sin(Date.now() / 150)) * 0.5 + 0.2;
+  const size = tileSize * 0.45;
+
+  ctx.fillStyle = 'yellow';
+  ctx.beginPath();
+
+  let angle = 0;
+  switch (pacman.direction) {
+    case 'right': angle = 0; break;
+    case 'left': angle = Math.PI; break;
+    case 'up': angle = -Math.PI / 2; break;
+    case 'down': angle = Math.PI / 2; break;
+  }
+
+  ctx.moveTo(px, py);
+  ctx.arc(px, py, size, angle + mouthOpen, angle + (2 * Math.PI) - mouthOpen);
+  ctx.closePath();
+  ctx.fill();
+}
+
 function updateColors() {
   if (rgbMode) {
     rgbHue = (rgbHue + 2) % 360;
-    mazeColor = `hsl(${rgbHue}, 100%, 30%)`; // Mais escuro e sem transparência
   } else {
     mazeColor = baseMazeColor;
   }
 }
 
-function spawnFruit() {
-  while (true) {
-    const fx = Math.floor(Math.random() * cols);
-    const fy = Math.floor(Math.random() * rows);
-    if (maze[fy] && maze[fy][fx] === 0 && !(fx === pacman.x && fy === pacman.y)) {
-      fruit = { x: fx, y: fy };
-      break;
-    }
-  }
-}
-
-function resizeCanvasAndMaze() {
+function init() {
   width = canvas.width = window.innerWidth;
   height = canvas.height = window.innerHeight;
 
@@ -365,28 +361,44 @@ function resizeCanvasAndMaze() {
 
   generateClassicMaze();
 
-  particles = Array.from({ length: 80 }, () => new Particle());
+  fruit = { x: cols - 2, y: rows - 2 };
 
-  if (!fruit) spawnFruit();
+  particles = [];
+  for (let i = 0; i < 100; i++) {
+    particles.push(new Particle());
+  }
+
+  pacman.x = 1;
+  pacman.y = 1;
+  pacman.px = 1;
+  pacman.py = 1;
+  pacman.moving = false;
+  pacman.path = [];
+  rgbMode = false;
+  rgbHue = 0;
 }
 
-function animate() {
+function loop() {
   ctx.clearRect(0, 0, width, height);
 
-  updateColors();
+  particles.forEach(p => {
+    p.update();
+    p.draw();
+  });
 
-  drawParticles();
   drawMaze();
   drawFruit();
-  updatePacman();
   drawPacman();
 
-  requestAnimationFrame(animate);
+  updatePacman();
+  updateColors();
+
+  requestAnimationFrame(loop);
 }
 
 window.addEventListener('resize', () => {
-  resizeCanvasAndMaze();
+  init();
 });
 
-resizeCanvasAndMaze();
-animate();
+init();
+loop();
