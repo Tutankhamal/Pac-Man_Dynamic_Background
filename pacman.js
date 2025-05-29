@@ -28,11 +28,12 @@ let cols, rows, halfCols;
 let maze = [];
 
 const mazeColors = [
-  '#fb234e15', '#f8862215', '#f0ed2115',
-  '#47ef2115', '#23d6e315', '#2326e015', '#a221dd15'
+  'rgba(251,35,78,0.15)', 'rgba(248,134,34,0.15)', 'rgba(240,237,33,0.15)',
+  'rgba(71,239,33,0.15)', 'rgba(35,214,227,0.15)', 'rgba(35,38,224,0.15)', 'rgba(162,33,221,0.15)'
 ];
 let baseMazeColor = mazeColors[Math.floor(Math.random() * mazeColors.length)];
 let mazeColor = baseMazeColor;
+console.log("Base Maze Color:", baseMazeColor);
 let rgbMode = false;
 let rgbHue = 0;
 let fruit = null;
