@@ -28,11 +28,11 @@ let cols, rows, halfCols;
 let maze = [];
 
 const mazeColors = [
-  'rgba(55, 0, 35, 0.6)',    // roxo escuro
-  'rgba(85, 15, 45, 0.6)',   // vinho escuro
-  'rgba(120, 20, 60, 0.6)',  // vermelho escuro puxado pro rosa
-  'rgba(90, 0, 70, 0.6)',    // roxo avermelhado escuro
-  'rgba(130, 35, 75, 0.6)'   // rosa escuro puxado pro vinho
+  '#37002310', // roxo escuro
+  '#550f2d10', // vinho escuro
+  '#78143c10', // vermelho escuro puxado pro rosa
+  '#5a004610', // roxo avermelhado escuro
+  '#82234b10'  // rosa escuro puxado pro vinho
 ];
 let baseMazeColor = mazeColors[Math.floor(Math.random() * mazeColors.length)];
 let mazeColor = baseMazeColor;
